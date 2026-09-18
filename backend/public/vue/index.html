@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="创赢工具箱" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>创赢工具箱</title>
+    <script type="module" crossorigin src="/assets/index-bReWsRTZ.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CWLRcNQi.css">
+  
+    <style id="custom-mobile-fix">
+      /* 强制扩大移动端咨询量/无效量输入框 */
+      .s-input, input.s-input, .m-step-group input, .input-stepper input {
+        width: 58px !important;
+        min-width: 58px !important;
+        max-width: 70px !important;
+        padding: 0 !important;
+        text-align: center !important;
+        font-size: 16px !important;
+        font-weight: 700 !important;
+        -moz-appearance: textfield !important;
+        box-sizing: border-box !important;
+      }
+      .s-input::-webkit-outer-spin-button,
+      .s-input::-webkit-inner-spin-button,
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+        -webkit-appearance: none !important;
+        margin: 0 !important;
+      }
+      .s-btn, button.s-btn {
+        width: 28px !important;
+        height: 28px !important;
+        min-width: 28px !important;
+        padding: 0 !important;
+        flex-shrink: 0 !important;
+      }
+
+      /* 底部菜单栏下移贴底 */
+      
+    </style>
+  
+    <style id="compact-filter-header-fix">
+      /* 手机端移动优先极致排版重构 */
+      @media (max-width: 768px) {
+        /* 1. 顶部 Header 与操作按钮合并紧凑布局 */
+        .page-header, .panel-header {
+          display: flex !important;
+          justify-content: space-between !important;
+          align-items: center !important;
+          margin-bottom: 8px !important;
+          padding: 0 2px !important;
+        }
+        .page-title {
+          font-size: 16px !important;
+          font-weight: 800 !important;
+          color: #0f172a !important;
+          margin: 0 !important;
+          display: flex !important;
+          align-items: center !important;
+          gap: 6px !important;
+        }
+        .header-actions {
+          display: flex !important;
+          gap: 6px !important;
+        }
+        .header-actions .el-button, .header-actions button {
+          height: 28px !important;
+          padding: 0 10px !important;
+          font-size: 12px !important;
+          border-radius: 8px !important;
+        }
+
+        /* 2. 筛选卡片精致化重构：两行紧凑结构 */
+        .filter-card, .search-card, .filter-wrapper {
+          background: #ffffff !important;
+          border-radius: 12px !important;
+          padding: 8px 10px !important;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+          border: 1px solid #f1f5f9 !important;
+          margin-bottom: 10px !important;
+        }
+
+        /* 第一行：搜索框 + 选择店铺 并排分布 */
+        .search-row, .filter-row:first-child {
+          display: flex !important;
+          gap: 8px !important;
+          margin-bottom: 6px !important;
+        }
+        .search-row > *, .filter-row:first-child > * {
+          flex: 1 !important;
+          margin-bottom: 0 !important;
+        }
+
+        /* 输入控件统一样式 */
+        .el-input__wrapper, .el-select__wrapper, input[type="text"], select {
+          height: 30px !important;
+          min-height: 30px !important;
+          line-height: 30px !important;
+          font-size: 12px !important;
+          padding: 0 8px !important;
+          border-radius: 8px !important;
+          background: #f8fafc !important;
+          border: 1px solid #e2e8f0 !important;
+          box-shadow: none !important;
+        }
+
+        /* 第二行：日期胶囊与查询按钮并排 */
+        .date-row, .filter-row:nth-child(2) {
+          display: flex !important;
+          align-items: center !important;
+          gap: 8px !important;
+          margin-bottom: 0 !important;
+        }
+
+        /* 日期选择胶囊组 */
+        .date-filter-group, .quick-date-pills {
+          flex: 1 !important;
+          display: flex !important;
+          background: #f1f5f9 !important;
+          padding: 2px !important;
+          border-radius: 8px !important;
+          height: 30px !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+        }
+        .date-pill, .quick-date-btn, .date-filter-group button {
+          flex: 1 !important;
+          height: 26px !important;
+          line-height: 26px !important;
+          font-size: 11px !important;
+          font-weight: 500 !important;
+          border-radius: 6px !important;
+          border: none !important;
+          background: transparent !important;
+          color: #64748b !important;
+          padding: 0 !important;
+          text-align: center !important;
+          transition: all 0.15s ease !important;
+        }
+        .date-pill.active, .quick-date-btn.active, .date-filter-group button.active {
+          background: #ffffff !important;
+          color: #0f172a !important;
+          font-weight: 700 !important;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        }
+
+        /* 查询按钮高亮紧凑 */
+        .btn-query, .search-btn, button.el-button--success, button.el-button--primary {
+          height: 30px !important;
+          min-height: 30px !important;
+          padding: 0 12px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          border-radius: 8px !important;
+          flex-shrink: 0 !important;
+        }
+
+        /* 3. 客户信息卡片排版呼吸感增强 */
+        .customer-card, .data-card {
+          border-radius: 14px !important;
+          padding: 12px 14px !important;
+          margin-bottom: 8px !important;
+          border: 1px solid #f1f5f9 !important;
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03) !important;
+        }
+      }
+    </style>
+  
+    <style id="ledger-mobile-pro-layout">
+      /* =========================================================
+         个人记账本·现代轻量极简质感设计（告别大红大绿饱和色块）
+         ========================================================= */
+      @media (max-width: 768px) {
+        .ledger-page-container {
+          gap: 10px !important;
+          padding: 0 4px !important;
+        }
+
+        /* 1. 顶部 Header 与操作按钮 */
+        .dash-hero-card {
+          background: #ffffff !important;
+          border: 1px solid #f1f5f9 !important;
+          border-radius: 14px !important;
+          padding: 10px 12px !important;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03) !important;
+          gap: 8px !important;
+        }
+        .hero-top-row {
+          display: flex !important;
+          justify-content: space-between !important;
+          align-items: center !important;
+        }
+        .hero-title {
+          font-size: 15px !important;
+          font-weight: 800 !important;
+          color: #0f172a !important;
+          margin: 0 !important;
+        }
+        .hero-actions {
+          display: flex !important;
+          gap: 6px !important;
+        }
+        .btn-quick-record {
+          background: #10b981 !important;
+          color: #ffffff !important;
+          border: none !important;
+          height: 28px !important;
+          line-height: 28px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          padding: 0 10px !important;
+          border-radius: 8px !important;
+        }
+        .btn-export-ledger, .dash-hero-card .el-button--default {
+          height: 28px !important;
+          line-height: 28px !important;
+          font-size: 12px !important;
+          padding: 0 8px !important;
+          border-radius: 8px !important;
+          background: #f8fafc !important;
+          border: 1px solid #e2e8f0 !important;
+          color: #475569 !important;
+        }
+
+        /* 2. 资金概览区：彻底改掉大色块，重构为纯白高级质感卡片 */
+        .funds-overview-grid {
+          display: flex !important;
+          flex-direction: row !important;
+          background: #ffffff !important;
+          border-radius: 14px !important;
+          padding: 12px 6px !important;
+          border: 1px solid #f1f5f9 !important;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03) !important;
+          margin: 0 !important;
+          gap: 0 !important;
+        }
+        .fund-card {
+          flex: 1 !important;
+          min-width: 0 !important;
+          background: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          padding: 0 4px !important;
+          text-align: center !important;
+          position: relative !important;
+          color: #0f172a !important;
+        }
+        .fund-card:not(:last-child)::after {
+          content: '' !important;
+          position: absolute !important;
+          right: 0 !important;
+          top: 15% !important;
+          height: 70% !important;
+          width: 1px !important;
+          background: #f1f5f9 !important;
+        }
+
+        /* 覆盖掉旧的背景类名 */
+        .fund-card.bg-emerald, .fund-card.bg-rose, .fund-card.bg-blue, .fund-card.bg-amber {
+          background: transparent !important;
+          color: inherit !important;
+        }
+
+        .fund-head {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          gap: 2px !important;
+          margin-bottom: 2px !important;
+        }
+        .fund-head .f-label {
+          font-size: 11px !important;
+          color: #64748b !important;
+          font-weight: 500 !important;
+          white-space: nowrap !important;
+        }
+        .fund-head .f-badge {
+          display: inline-block !important;
+          font-size: 9.5px !important;
+          font-weight: 700 !important;
+          padding: 1px 5px !important;
+          border-radius: 4px !important;
+        }
+        .fund-card.bg-emerald .f-badge { background: #ecfdf5 !important; color: #059669 !important; }
+        .fund-card.bg-rose .f-badge { background: #fef2f2 !important; color: #dc2626 !important; }
+        .fund-card.bg-blue .f-badge { background: #eff6ff !important; color: #2563eb !important; }
+
+        .fund-money {
+          font-size: 15.5px !important;
+          font-weight: 800 !important;
+          color: #0f172a !important;
+          margin: 4px 0 2px 0 !important;
+          letter-spacing: -0.3px !important;
+          line-height: 1.2 !important;
+        }
+        .fund-card.bg-emerald .fund-money { color: #059669 !important; }
+        .fund-card.bg-rose .fund-money { color: #dc2626 !important; }
+        .fund-card.bg-blue .fund-money { color: #2563eb !important; }
+
+        .fund-sub {
+          display: none !important; /* 手机端隐藏过长的说明小字 */
+        }
+
+        /* 3. 收支流水明细卡片（ledger-table-card）排版重构 */
+        .ledger-table-card {
+          background: #ffffff !important;
+          border-radius: 14px !important;
+          padding: 12px !important;
+          border: 1px solid #f1f5f9 !important;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03) !important;
+        }
+        .table-head-row {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 8px !important;
+          margin-bottom: 12px !important;
+        }
+        .table-title {
+          font-size: 14.5px !important;
+          font-weight: 700 !important;
+          color: #0f172a !important;
+        }
+        .table-filters {
+          display: flex !important;
+          gap: 6px !important;
+        }
+        .table-filters .el-select {
+          flex: 1 !important;
+        }
+        .table-filters .el-select__wrapper {
+          height: 30px !important;
+          min-height: 30px !important;
+          font-size: 12px !important;
+          border-radius: 8px !important;
+          background: #f8fafc !important;
+          box-shadow: 0 0 0 1px #e2e8f0 inset !important;
+        }
+      }
+    </style>
+  
+    <style id="modern-filter-bar-redesign">
+      /* 手机端精美一体化重构：.filter-row-unified */
+      @media (max-width: 768px) {
+        .filter-row-unified {
+          display: flex !important;
+          flex-wrap: wrap !important;
+          gap: 6px !important;
+          background: #ffffff !important;
+          padding: 8px !important;
+          border-radius: 12px !important;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+          border: 1px solid #f1f5f9 !important;
+          margin-bottom: 8px !important;
+        }
+
+        /* 搜索框：占据第一行左侧 */
+        .filter-row-unified .search-pill-input {
+          flex: 1 1 55% !important;
+          min-width: 0 !important;
+          margin: 0 !important;
+        }
+
+        /* 选择店铺：占据第一行右侧 */
+        .filter-row-unified .el-select, 
+        .filter-row-unified > [style*="width: 140px"],
+        .filter-row-unified > [style*="width:140px"] {
+          flex: 1 1 35% !important;
+          width: auto !important;
+          min-width: 0 !important;
+          margin: 0 !important;
+        }
+
+        /* 统一输入框与选择器外观 */
+        .filter-row-unified .el-input__wrapper,
+        .filter-row-unified .el-select__wrapper {
+          height: 32px !important;
+          min-height: 32px !important;
+          line-height: 32px !important;
+          font-size: 12px !important;
+          padding: 0 8px !important;
+          border-radius: 8px !important;
+          background: #f8fafc !important;
+          box-shadow: 0 0 0 1px #e2e8f0 inset !important;
+        }
+
+        /* 日期选择器胶囊组：占据第二行主体 */
+        .filter-row-unified .unified-date-filter,
+        .filter-row-unified > [class*="date"],
+        .filter-row-unified .el-radio-group {
+          flex: 1 1 auto !important;
+          min-width: 0 !important;
+          margin: 0 !important;
+        }
+
+        /* 日期内各个按钮 */
+        .filter-row-unified .el-radio-button__inner,
+        .filter-row-unified [class*="date"] button {
+          height: 30px !important;
+          line-height: 30px !important;
+          font-size: 11px !important;
+          padding: 0 6px !important;
+        }
+
+        /* 查询按钮：第二行右侧 */
+        .filter-row-unified .btn-search-pill,
+        .filter-row-unified button.el-button--primary {
+          flex: 0 0 auto !important;
+          height: 30px !important;
+          min-height: 30px !important;
+          line-height: 30px !important;
+          padding: 0 12px !important;
+          font-size: 12px !important;
+          font-weight: 600 !important;
+          border-radius: 8px !important;
+          margin: 0 !important;
+          background: #10b981 !important;
+          border-color: #10b981 !important;
+        }
+      }
+    </style>
+  
+    
+    <style id="fix-bot-and-sidebar-overlap">
+      /* 彻底解决设置页及机器人分组面板被左侧固定菜单栏遮挡问题 */
+      .main {
+        margin-left: 185px !important;
+        padding: 16px 24px 40px !important;
+        min-height: 100vh !important;
+        box-sizing: border-box !important;
+        position: relative !important;
+        z-index: 1 !important;
+      }
+      .modern-sidebar {
+        width: 175px !important;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        z-index: 99 !important;
+      }
+      @media (max-width: 768px) {
+        .main {
+          margin-left: 0 !important;
+          padding: 10px 10px calc(80px + env(safe-area-inset-bottom)) !important;
+        }
+      }
+
+      /* 机器人分组与配额分发卡片专属约束 */
+      #wecom-bot-group-manager-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        box-sizing: border-box !important;
+        position: relative !important;
+        overflow: hidden !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+  
+    <script id="custom-tab-rotator">
+      // 监听底部工作台菜单点击，实现循环轮转顶部Tab：全盘总览 -> 职称业务 -> 财税业务 -> 提成表 -> 全盘总览
+      (function() {
+        var lastClickTime = 0;
+        document.addEventListener('click', function(e) {
+          var tabItem = e.target.closest && e.target.closest('.app-mobile-tabbar .tabbar-item, .tabbar-item');
+          if (!tabItem) return;
+          
+          var labelEl = tabItem.querySelector('.tabbar-label');
+          var labelText = (labelEl ? labelEl.textContent : tabItem.textContent || '').trim();
+          
+          if (labelText.indexOf('工作台') !== -1) {
+            var now = Date.now();
+            if (now - lastClickTime < 250) return;
+            lastClickTime = now;
+
+            // 检查当前页面是否在工作台（查找顶部业务切换按钮）
+            var segBtns = document.querySelectorAll('.scope-nav-segment-bar .scope-seg-btn');
+            if (segBtns && segBtns.length > 0) {
+              var activeIdx = -1;
+              for (var i = 0; i < segBtns.length; i++) {
+                if (segBtns[i].classList.contains('active')) {
+                  activeIdx = i;
+                  break;
+                }
+              }
+              var nextIdx = (activeIdx + 1) % segBtns.length;
+              if (segBtns[nextIdx]) {
+                segBtns[nextIdx].click();
+              }
+            }
+          }
+        }, true); // 使用 capture 捕获阶段，防止被 Vue 的 stopPropagation 拦截
+      })();
+    </script>
+    <script src="/wecom-bot-manager.js?v=6.2.0"></script>
+    <script src="/qr-paste-support.js?v=6.2.0"></script>
+    <script src="/feedback-native-workbench.js?v=6.2.0"></script>
+    <script src="/compact-table-enhancer.js?v=6.2.0"></script>
+  </body>
+</html>

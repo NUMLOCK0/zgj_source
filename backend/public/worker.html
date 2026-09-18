@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>任务领取</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,"Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#07c160,#06ad56)}
+.box{background:#fff;border-radius:12px;padding:40px 32px;width:90%;max-width:460px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.15)}
+.box h1{font-size:22px;color:#191919;margin-bottom:6px}
+.box .sub{color:#999;font-size:13px;margin-bottom:28px}
+.proj-name{display:inline-block;background:#f0f7ff;color:#1989fa;font-size:13px;padding:4px 14px;border-radius:16px;margin-bottom:16px;font-weight:500}
+.badge{display:inline-block;background:#f0faf5;color:#07c160;font-size:13px;padding:6px 16px;border-radius:20px;margin-bottom:28px}
+.badge .n{font-size:18px;font-weight:700}
+.btn-get{background:linear-gradient(135deg,#07c160,#06ad56);color:#fff;border:none;padding:14px 44px;font-size:17px;border-radius:10px;cursor:pointer;font-weight:600;transition:all .2s;box-shadow:0 4px 12px rgba(7,193,96,0.35)}
+.btn-get:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(7,193,96,0.45)}
+.btn-get:active{transform:translateY(0)}
+.btn-get:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.result{margin-top:24px;display:none;text-align:left}
+.result.show{display:block}
+.result .lbl{font-size:13px;color:#999;margin-bottom:6px}
+.result .content{background:#f8f9fa;border:1px solid #e9ecef;border-radius:8px;padding:14px;font-size:14px;color:#333;word-break:break-all;line-height:1.6}
+.btn-copy{margin-top:10px;background:#f7f7f7;color:#07c160;border:1px solid #07c160;padding:7px 18px;font-size:13px;border-radius:8px;cursor:pointer}
+.btn-copy:hover{background:#f0faf5}
+.empty{display:none;color:#999;font-size:15px;padding:30px 0}
+.empty.show{display:block}
+.empty .icon{font-size:42px;margin-bottom:12px}
+.error-box{display:none}
+.error-box.show{display:block}
+.error-box .icon{font-size:42px;margin-bottom:12px}
+.error-box p{color:#999;font-size:15px}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:rgba(0,0,0,0.75);color:#fff;padding:10px 22px;border-radius:8px;font-size:14px;opacity:0;transition:all .3s;z-index:999}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.success{background:#07c160}
+.toast.error{background:#fa5151}
+.result-images{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px}
+.result-images img{width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #e9ecef;cursor:pointer;transition:transform .2s}
+.result-images img:hover{transform:scale(1.05)}
+.img-item{position:relative;width:100px;height:100px}
+.img-item img{width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid #e9ecef;cursor:pointer;transition:transform .2s}
+.img-item img:hover{transform:scale(1.05)}
+.img-item .dl-btn{position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.6);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;line-height:1;border:none}
+.img-item .dl-btn:hover{background:rgba(7,193,96,0.9)}
+.btn-save-all{margin-top:10px;background:#f7f7f7;color:#1989fa;border:1px solid #1989fa;padding:7px 18px;font-size:13px;border-radius:8px;cursor:pointer}
+.btn-save-all:hover{background:#f0f7ff}
+.img-modal .dl-modal-btn{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);background:#07c160;color:#fff;border:none;padding:10px 24px;font-size:14px;border-radius:8px;cursor:pointer;font-weight:500}
+.img-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:300;display:none;align-items:center;justify-content:center}
+.img-modal.show{display:flex}
+.img-modal img{max-width:90%;max-height:90%;border-radius:8px}
+.img-modal .close-btn{position:absolute;top:16px;right:16px;color:#fff;font-size:28px;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center}
+.btn-return{margin-top:12px;background:#fff0f0;color:#fa5151;border:1px solid #fa5151;padding:10px 24px;font-size:14px;border-radius:8px;cursor:pointer;font-weight:500;transition:all .2s}
+.btn-return:hover{background:#fa5151;color:#fff}
+.btn-return:active{transform:scale(0.97)}
+@media(max-width:480px){
+  body{padding:0}
+  .box{padding:24px 16px;width:100%;max-width:100%;border-radius:0;min-height:100vh;display:flex;flex-direction:column;justify-content:flex-start}
+  .box h1{font-size:18px;margin-top:8px}
+  .box .sub{font-size:12px;margin-bottom:20px}
+  .btn-get{padding:16px;width:100%;font-size:16px;border-radius:10px}
+  .btn-copy{padding:10px 16px;font-size:14px}
+  .btn-save-all{padding:10px 16px;font-size:14px;width:100%}
+  .btn-return{padding:12px;width:100%;font-size:14px}
+  .result .content{font-size:15px;padding:12px;line-height:1.7}
+  .img-item,.img-item img{width:90px;height:90px}
+  .result-images img{width:90px;height:90px}
+  .badge{font-size:12px;padding:5px 14px}
+  .badge .n{font-size:16px}
+  .proj-name{font-size:12px;padding:3px 12px}
+  .img-modal img{max-width:95%;max-height:80vh}
+  .img-modal .dl-modal-btn{padding:12px 28px;font-size:15px}
+  .img-modal .close-btn{width:44px;height:44px;font-size:30px}
+}
+</style>
+</head>
+<body>
+<div class="box" id="mainBox">
+  <div id="loadingBox"><p style="color:#999">加载中...</p></div>
+  <div id="errorBox" class="error-box">
+    <div class="icon">⚠️</div>
+    <p id="errorMsg">链接无效，请联系管理员</p>
+  </div>
+  <div id="workBox" style="display:none">
+    <div class="proj-name" id="projName"></div>
+    <h1>📋 任务领取</h1>
+    <p class="sub">点击按钮获取一个任务题目</p>
+    <div class="badge" id="badge">剩余可领取：<span class="n" id="num">-</span> 题</div>
+    <button class="btn-get" id="btnGet" onclick="getTask()">获取问题</button>
+    <div id="gotTip" style="display:none;background:#fff3e0;border:1px solid #ffe0b2;border-radius:8px;padding:10px 16px;margin-top:20px;font-size:13px;color:#e65100">✅ 您已领取过题目，每人限领一次</div>
+    <div class="empty" id="empty">
+      <div class="icon">🎉</div>
+      <p>题目已领完，请联系管理员补充</p>
+    </div>
+    <div class="result" id="result">
+      <div id="fixedCopyArea" style="display:none;margin-bottom:16px">
+        <div class="lbl" style="font-size:13px;color:#999;margin-bottom:6px">📋 固定复制内容：</div>
+        <div class="content" id="fixedCopyContent" style="background:#f0f7ff;border-color:#d0e3ff"></div>
+        <button class="btn-copy" style="color:#1989fa;border-color:#1989fa" onclick="copyFixedText()">📋 复制固定内容</button>
+      </div>
+      <div class="lbl">获取到的题目：</div>
+      <div class="content" id="resultContent"></div>
+      <div class="result-images" id="resultImages" style="display:none"></div>
+      <div id="imgActions" style="display:none;margin-top:4px">
+        <button class="btn-save-all" onclick="saveAllImages()">💾 保存全部图片</button>
+      </div>
+      <button class="btn-copy" onclick="copyAgain()">📋 再复制一次</button>
+      <button class="btn-return" id="btnReturn" style="display:none" onclick="returnTask()">← 放弃此题，重新领取</button>
+    </div>
+  </div>
+</div>
+<div class="img-modal" id="imgModal" onclick="closeImgModal()"><span class="close-btn">&times;</span><img id="modalImg" src=""><button class="dl-modal-btn" onclick="event.stopPropagation();saveImgFromModal()">💾 保存这张图片</button></div>
+<div class="toast" id="toast"></div>
+
+<script>
+var projectId = 0;
+var browserFingerprint = '';
+
+function getQueryParam(name) {
+  var match = window.location.search.match(new RegExp('[?&]' + name + '=([^&]+)'));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(function() { t.className = 'toast'; }, 2000);
+}
+
+// 生成浏览器指纹（canvas + UA + 屏幕 + 时区 + 语言）
+function generateFingerprint() {
+  var canvas = document.createElement('canvas');
+  var ctx = canvas.getContext('2d');
+  var txt = 'zgj-fp-' + projectId;
+  ctx.textBaseline = 'top';
+  ctx.font = '14px Arial';
+  ctx.fillStyle = '#f60';
+  ctx.fillRect(125, 1, 62, 20);
+  ctx.fillStyle = '#069';
+  ctx.fillText(txt, 2, 15);
+  ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+  ctx.fillText(txt, 4, 17);
+  var dataUrl = canvas.toDataURL();
+  var hash = 0;
+  for (var i = 0; i < dataUrl.length; i++) {
+    hash = ((hash << 5) - hash) + dataUrl.charCodeAt(i);
+    hash = hash & hash;
+  }
+  var parts = [
+    Math.abs(hash).toString(36),
+    navigator.userAgent,
+    navigator.language,
+    navigator.languages ? navigator.languages.join(',') : '',
+    screen.width + 'x' + screen.height,
+    screen.colorDepth,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency || 0,
+    navigator.platform || ''
+  ];
+  var fpStr = parts.join('|');
+  var hash2 = 0;
+  for (var j = 0; j < fpStr.length; j++) {
+    hash2 = ((hash2 << 5) - hash2) + fpStr.charCodeAt(j);
+    hash2 = hash2 & hash2;
+  }
+  return Math.abs(hash2).toString(36);
+}
+
+// localStorage 本地标记
+function getLocalKey() { return 'zgj_task_claimed_' + projectId; }
+
+function isClaimedLocally() {
+  try { return !!localStorage.getItem(getLocalKey()); } catch(e) { return false; }
+}
+
+function markClaimedLocally(question, copyText, images) {
+  try {
+    localStorage.setItem(getLocalKey(), question || '1');
+    if (copyText) {
+      localStorage.setItem(getLocalKey() + '_copyText', copyText);
+    }
+    if (images && images.length > 0) {
+      localStorage.setItem(getLocalKey() + '_images', JSON.stringify(images));
+    }
+  } catch(e) {}
+}
+
+function getLocalClaim() {
+  try { return localStorage.getItem(getLocalKey()) || ''; } catch(e) { return ''; }
+}
+
+function getLocalCopyText() {
+  try { return localStorage.getItem(getLocalKey() + '_copyText') || ''; } catch(e) { return ''; }
+}
+
+function getLocalImages() {
+  try {
+    var s = localStorage.getItem(getLocalKey() + '_images');
+    return s ? JSON.parse(s) : [];
+  } catch(e) { return []; }
+}
+
+function showClaimedState(question, copyText, images) {
+  document.getElementById('btnGet').style.display = 'none';
+  document.getElementById('badge').style.display = 'none';
+  document.getElementById('resultContent').textContent = question;
+  document.getElementById('result').classList.add('show');
+  var gotTip = document.getElementById('gotTip');
+  if (gotTip) gotTip.style.display = 'block';
+  var btnRet = document.getElementById('btnReturn');
+  if (btnRet) btnRet.style.display = 'block';
+  if (copyText) {
+    document.getElementById('fixedCopyContent').textContent = copyText;
+    document.getElementById('fixedCopyArea').style.display = 'block';
+  }
+  var imgArea = document.getElementById('resultImages');
+  var imgActions = document.getElementById('imgActions');
+  if (images && images.length > 0) {
+    var htm = '';
+    images.forEach(function(url, i) {
+      htm += '<div class="img-item">';
+      htm += '<img src="' + url + '" onclick="openImgModal(\'' + url + '\')">';
+      htm += '<button class="dl-btn" onclick="event.stopPropagation();saveSingleImage(\'' + url + '\', ' + i + ')">\u2B07</button>';
+      htm += '</div>';
+    });
+    imgArea.innerHTML = htm;
+    imgArea.style.display = 'flex';
+    if (imgActions) imgActions.style.display = 'block';
+  } else {
+    imgArea.style.display = 'none';
+    imgArea.innerHTML = '';
+    if (imgActions) imgActions.style.display = 'none';
+  }
+}
+
+function init() {
+  projectId = parseInt(getQueryParam('project')) || 0;
+  if (!projectId) {
+    document.getElementById('loadingBox').style.display = 'none';
+    document.getElementById('errorBox').classList.add('show');
+    document.getElementById('errorMsg').textContent = '缺少项目参数，请联系管理员获取正确链接';
+    return;
+  }
+  browserFingerprint = generateFingerprint();
+  fetch('/api/tasks/project-info?project=' + projectId)
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      document.getElementById('loadingBox').style.display = 'none';
+      if (!d.success) {
+        document.getElementById('errorBox').classList.add('show');
+        document.getElementById('errorMsg').textContent = d.message || '项目不存在';
+        return;
+      }
+      document.getElementById('workBox').style.display = 'block';
+      document.getElementById('projName').textContent = d.name;
+      document.getElementById('num').textContent = d.remaining;
+      // 检查本地标记
+      if (isClaimedLocally()) {
+        showClaimedState(getLocalClaim(), getLocalCopyText() || d.copyText, getLocalImages());
+        showToast('您已领取过题目', 'error');
+        return;
+      }
+      if (d.remaining === 0) {
+        document.getElementById('btnGet').style.display = 'none';
+        document.getElementById('badge').style.display = 'none';
+        document.getElementById('empty').classList.add('show');
+      }
+    })
+    .catch(function() {
+      document.getElementById('loadingBox').style.display = 'none';
+      document.getElementById('errorBox').classList.add('show');
+    });
+}
+
+function getTask() {
+  var btn = document.getElementById('btnGet');
+  btn.disabled = true;
+  btn.textContent = '获取中...';
+  fetch('/api/tasks/get', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId: projectId, fingerprint: browserFingerprint })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.success) {
+        copyText(d.question);
+        showToast('已复制到剪贴板', 'success');
+        markClaimedLocally(d.question, d.copyText, d.images);
+        showClaimedState(d.question, d.copyText, d.images);
+        document.getElementById('num').textContent = d.remaining;
+      } else {
+        if (d.message === '已领取过') {
+          markClaimedLocally(d.question, d.copyText, d.images);
+          showClaimedState(d.question, d.copyText, d.images);
+          showToast('您已领取过题目', 'error');
+        } else if (d.message === '题目已领完') {
+          document.getElementById('btnGet').style.display = 'none';
+          document.getElementById('badge').style.display = 'none';
+          document.getElementById('empty').classList.add('show');
+        } else {
+          showToast(d.message || '获取失败', 'error');
+        }
+      }
+    })
+    .catch(function() { showToast('网络错误', 'error'); })
+    .finally(function() { btn.disabled = false; btn.textContent = '获取问题'; });
+}
+
+function copyAgain() {
+  copyText(document.getElementById('resultContent').innerText);
+  showToast('已复制', 'success');
+}
+
+function copyFixedText() {
+  copyText(document.getElementById('fixedCopyContent').innerText);
+  showToast('固定内容已复制', 'success');
+}
+
+function copyText(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {}).catch(function() { fallbackCopy(text); });
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+function openImgModal(src) {
+  document.getElementById('modalImg').src = src;
+  document.getElementById('imgModal').classList.add('show');
+}
+function closeImgModal() {
+  document.getElementById('imgModal').classList.remove('show');
+}
+
+var currentClaimedImages = [];
+
+function saveSingleImage(url, idx) {
+  var filename = 'task_img_' + (idx + 1) + '.png';
+  downloadImage(url, filename);
+}
+
+function saveImgFromModal() {
+  var src = document.getElementById('modalImg').src;
+  if (src) downloadImage(src, 'task_img_full.png');
+  closeImgModal();
+}
+
+function saveAllImages() {
+  var imgs = document.querySelectorAll('#resultImages img');
+  if (imgs.length === 0) { showToast('没有图片可保存'); return; }
+  var delay = 0;
+  imgs.forEach(function(img, i) {
+    setTimeout(function() {
+      downloadImage(img.src, 'task_img_' + (i + 1) + '.png');
+    }, delay);
+    delay += 300;
+  });
+  showToast('正在保存' + imgs.length + '张图片...', 'success');
+}
+
+function isMobile() { return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent); }
+
+function downloadImage(url, filename) {
+  if (isMobile()) {
+    // Mobile: show full-screen overlay, user long-press to save to album
+    showSaveOverlay(url);
+    return;
+  }
+  // Desktop: blob download
+  fetch(url)
+    .then(function(r) { return r.blob(); })
+    .then(function(blob) {
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(function() { URL.revokeObjectURL(link.href); }, 1000);
+    })
+    .catch(function() {
+      var link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+}
+
+function showSaveOverlay(url) {
+  var old = document.getElementById('saveOverlay');
+  if (old) old.remove();
+  var overlay = document.createElement('div');
+  overlay.id = 'saveOverlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.97);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px';
+  
+  var tip = document.createElement('div');
+  tip.style.cssText = 'color:#fff;font-size:15px;margin-bottom:16px;text-align:center;line-height:2';
+  tip.textContent = '\u2B07\uFE0F \u957F\u6309\u4E0B\u65B9\u56FE\u7247\uFF0C\u9009\u62E9\u300C\u4FDD\u5B58\u56FE\u7247\u300D\u5B58\u5165\u76F8\u518C';
+  overlay.appendChild(tip);
+  
+  var imgBox = document.createElement('div');
+  imgBox.style.cssText = 'position:relative;max-width:90vw;max-height:55vh';
+  
+  var img = document.createElement('img');
+  img.style.cssText = 'max-width:90vw;max-height:55vh;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5)';
+  imgBox.appendChild(img);
+  overlay.appendChild(imgBox);
+  
+  var loadingTip = document.createElement('div');
+  loadingTip.style.cssText = 'color:#aaa;font-size:13px;margin-top:10px';
+  loadingTip.textContent = '\u56FE\u7247\u52A0\u8F7D\u4E2D...';
+  overlay.appendChild(loadingTip);
+  
+  var wxTip = document.createElement('div');
+  wxTip.style.cssText = 'color:#aaa;font-size:12px;margin-top:14px;text-align:center;line-height:1.8;max-width:320px';
+  wxTip.textContent = '\u5982\u679C\u65E0\u6CD5\u4FDD\u5B58\uFF0C\u70B9\u53F3\u4E0A\u89D2 \u00B7\u00B7\u00B7 \u9009\u300C\u5728\u6D4F\u89C8\u5668\u6253\u5F00\u300D\u540E\u518D\u957F\u6309\u4FDD\u5B58';
+  overlay.appendChild(wxTip);
+  
+  var closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'margin-top:20px;padding:10px 32px;background:#07c160;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer';
+  closeBtn.textContent = '\u5173\u95ED';
+  closeBtn.onclick = function() { overlay.remove(); };
+  overlay.appendChild(closeBtn);
+  
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.body.appendChild(overlay);
+  
+  // Fetch image as blob, convert to base64 data URL
+  // Base64 images can be long-pressed and saved in WeChat browser
+  fetch(url)
+    .then(function(r) { return r.blob(); })
+    .then(function(blob) {
+      var reader = new FileReader();
+      reader.onloadend = function() {
+        var dataUrl = reader.result;
+        img.src = dataUrl;
+        loadingTip.textContent = '\u2714 \u56FE\u7247\u5DF2\u52A0\u8F7D\uFF0C\u957F\u6309\u56FE\u7247\u4FDD\u5B58';
+        loadingTip.style.color = '#4caf50';
+      };
+      reader.readAsDataURL(blob);
+    })
+    .catch(function() {
+      // Fallback: try direct URL (may work in some browsers)
+      img.src = url;
+      loadingTip.textContent = '\u56FE\u7247\u52A0\u8F7D\u5931\u8D25\uFF0C\u8BF7\u70B9\u300C\u5728\u6D4F\u89C8\u5668\u6253\u5F00\u300D';
+      loadingTip.style.color = '#f44336';
+    });
+}
+function returnTask() {
+  if (!confirm('确定放弃当前题目？放弃后可以重新领取新题目。')) return;
+  fetch('/api/tasks/return', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId: projectId, fingerprint: browserFingerprint })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.success) {
+        // Clear local storage
+        try {
+          localStorage.removeItem(getLocalKey());
+          localStorage.removeItem(getLocalKey() + '_copyText');
+          localStorage.removeItem(getLocalKey() + '_images');
+        } catch(e) {}
+        showToast('已退回题目', 'success');
+        // Reset UI
+        document.getElementById('result').classList.remove('show');
+        document.getElementById('gotTip').style.display = 'none';
+        document.getElementById('btnGet').style.display = '';
+        document.getElementById('badge').style.display = '';
+        document.getElementById('btnReturn').style.display = 'none';
+        // Refresh remaining count
+        fetch('/api/tasks/project-info?project=' + projectId)
+          .then(function(r) { return r.json(); })
+          .then(function(info) {
+            if (info.success) {
+              document.getElementById('num').textContent = info.remaining;
+              if (info.remaining === 0) {
+                document.getElementById('btnGet').style.display = 'none';
+                document.getElementById('badge').style.display = 'none';
+                document.getElementById('empty').classList.add('show');
+              }
+            }
+          });
+      } else {
+        showToast(d.message || '退回失败', 'error');
+      }
+    })
+    .catch(function() { showToast('网络错误', 'error'); });
+}
+
+init();
+</script>
+</body>
+</html>
