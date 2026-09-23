@@ -244,9 +244,9 @@ function addAuditLog(userId, username, action, detail, req, context = {}) {
   };
   if (context && typeof context === 'object' && Object.keys(context).length) entry.context = context;
   db.auditLogs.push(entry);
-  // 最多保留5000条
-  if (db.auditLogs.length > 5000) {
-    db.auditLogs = db.auditLogs.slice(-5000);
+  // 迁移后历史日志超过5000条，保留最近10000条
+  if (db.auditLogs.length > 10000) {
+    db.auditLogs = db.auditLogs.slice(-10000);
   }
 }
 
