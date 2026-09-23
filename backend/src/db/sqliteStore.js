@@ -27,6 +27,7 @@ const META_KEYS = [
   'financeStores',
   'customerConfigs',
   'financeConfigs',
+  'aiConfig',
   'nextConsultStatId',
   'nextFinanceConsultStatId',
   'nextAuditLogId',

@@ -1,4 +1,4 @@
-export async function api(method, url, body) {
+export async function api(method, url, body, options = {}) {
   const opts = {
     method,
     credentials: 'same-origin',
@@ -7,7 +7,7 @@ export async function api(method, url, body) {
   if (body !== undefined) opts.body = JSON.stringify(body)
 
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 15000)
+  const timer = setTimeout(() => controller.abort(), options.timeout || 15000)
   let res
   try {
     res = await fetch(url, { ...opts, signal: controller.signal })
@@ -39,6 +39,12 @@ export const authApi = {
   changePassword: (payload) => api('POST', '/api/change-password', payload)
 }
 
+export const aiApi = {
+  settings: () => api('GET', '/api/ai-settings'),
+  saveSettings: (payload) => api('PUT', '/api/ai-settings', payload),
+  extract: (text, type = 'customer') => api('POST', '/api/ai-extract', { text, type }, { timeout: 65000 })
+}
+
 export const customerApi = {
   list: ({ page = 1, pageSize = 20, keyword = '', dateFilter = 'all', employee = '', store = '', all = false, startDate = '', endDate = '' } = {}) => {
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), keyword, dateFilter, employee, store })
@@ -60,6 +66,48 @@ export const customerApi = {
   addConfig: (type, value) => api('POST', `/api/customer-configs/${type}`, { value }),
   removeConfig: (type, value) => api('DELETE', `/api/customer-configs/${type}?value=${encodeURIComponent(value)}`),
   creators: () => api('GET', '/api/customers/creators'),
+  checkDuplicate: ({ phone = '', wechat = '', teacherWechat = '', orderNo = '', scope = 'customer' } = {}) => {
+    const params = new URLSearchParams({ phone, wechat, teacherWechat, orderNo, scope })
+    return api('GET', `/api/customers/check-duplicate?${params.toString()}`)
+  },
+  uploadQrcode: (imageBase64, filename = 'qrcode.png') => api('POST', '/api/upload-qrcode', { imageBase64, filename }),
+  exportUrl: ({ keyword = '', dateFilter = 'all', employee = '', store = '', startDate = '', endDate = '' } = {}) => {
+    const params = new URLSearchParams({ keyword, dateFilter, employee, store })
+    if (startDate) params.set('startDate', startDate)
+    if (endDate) params.set('endDate', endDate)
+    return `/api/customers/export?${params.toString()}`
+  },
+  importRows: (payload) => api('POST', '/api/customers/import', payload)
+}
+
+export const dashboardApi = {
+  stats: () => api('GET', '/api/dashboard/stats'),
+  salaryExportUrl: (month) => `/api/finance/salary-reconcile-export?month=${encodeURIComponent(month)}`
+}
+
+export const financeApi = {
+  list: ({ page = 1, pageSize = 20, keyword = '', hasOrder = '', serviceType = '', startDate = '', endDate = '' } = {}) => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize), keyword, hasOrder, serviceType, startDate, endDate })
+    return api('GET', `/api/finance-customers?${params.toString()}`)
+  },
+  create: (payload) => api('POST', '/api/finance-customers', payload),
+  update: (id, payload) => api('PUT', `/api/finance-customers/${id}`, payload),
+  remove: (id) => api('DELETE', `/api/finance-customers/${id}`),
+  batchRemove: (ids) => api('POST', '/api/finance-customers/batch-delete', { ids }),
+  importRows: (payload) => api('POST', '/api/finance-customers/import', payload),
+  configs: () => api('GET', '/api/finance-configs'),
+  addConfig: (type, value) => api('POST', `/api/finance-configs/${type}`, { value }),
+  removeConfig: (type, value) => api('DELETE', `/api/finance-configs/${type}?value=${encodeURIComponent(value)}`),
+  exportUrl: (params = {}) => `/api/finance-customers/export?${new URLSearchParams(params).toString()}`
+}
+
+export const ledgerApi = {
+  records: (params = {}) => api('GET', `/api/ledger/records?${new URLSearchParams(params).toString()}`),
+  create: (payload) => api('POST', '/api/ledger/records', payload),
+  update: (id, payload) => api('PUT', `/api/ledger/records/${id}`, payload),
+  remove: (id) => api('DELETE', `/api/ledger/records/${id}`),
+  uploadReceipt: (payload) => api('POST', '/api/ledger/upload-receipt', payload),
+  exportUrl: (params = {}) => `/api/ledger/export?${new URLSearchParams(params).toString()}`
 }
 
 export const userApi = {
@@ -75,7 +123,17 @@ export const syncApi = {
   fetchToken: (payload) => api('POST', '/api/wukong-sync-settings/token', payload),
   validateToken: () => api('POST', '/api/wukong-sync-settings/validate-token'),
   queue: (page = 1, pageSize = 20) => api('GET', `/api/wukong-sync-queue?page=${page}&pageSize=${pageSize}`),
-  runQueue: () => api('POST', '/api/wukong-sync-queue/sync')
+  runQueue: () => api('POST', '/api/wukong-sync-queue/sync'),
+  botGroups: () => api('GET', '/api/wecom-bot-groups'),
+  toggleBotGroups: (enabled) => api('POST', '/api/wecom-bot-groups/toggle-global', { enabled }),
+  createBotGroup: (payload) => api('POST', '/api/wecom-bot-groups', payload),
+  updateBotGroup: (id, payload) => api('PUT', `/api/wecom-bot-groups/${id}`, payload),
+  removeBotGroup: (id) => api('DELETE', `/api/wecom-bot-groups/${id}`),
+  addBot: (groupId, payload) => api('POST', `/api/wecom-bot-groups/${groupId}/bots`, payload),
+  updateBot: (groupId, botId, payload) => api('PUT', `/api/wecom-bot-groups/${groupId}/bots/${botId}`, payload),
+  removeBot: (groupId, botId) => api('DELETE', `/api/wecom-bot-groups/${groupId}/bots/${botId}`),
+  resetBotCounts: (groupId) => api('POST', `/api/wecom-bot-groups/${groupId}/reset-counts`),
+  testBot: (groupId, botId) => api('POST', `/api/wecom-bot-groups/${groupId}/bots/${botId}/test`)
 }
 
 export const taskApi = {
@@ -100,6 +158,16 @@ export const statsApi = {
   batchConsult: (entries) => api('POST', '/api/consult-stats/batch', { entries }),
   salaryDetails: (month) => api('GET', `/api/salary/details?month=${month}`),
   auditLogs: (page, pageSize, action = '', username = '') => api('GET', `/api/audit-logs?page=${page}&pageSize=${pageSize}&action=${encodeURIComponent(action)}&username=${encodeURIComponent(username)}`)
+}
+
+export const auditApi = {
+  recordLogs: (recordType, recordId) => api('GET', `/api/record-logs/${encodeURIComponent(recordType)}/${encodeURIComponent(recordId)}`)
+}
+
+export const financeStatsApi = {
+  leadDay: (date) => api('GET', '/api/finance-lead-stats?date=' + date),
+  leadSummary: (startDate, endDate) => api('GET', '/api/finance-lead-stats/summary?startDate=' + startDate + '&endDate=' + endDate),
+  saveConsult: (payload) => api('POST', '/api/finance-consult-stats', payload)
 }
 
 // === v5.1.0 新增 ===

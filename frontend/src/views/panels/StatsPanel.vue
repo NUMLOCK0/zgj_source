@@ -35,7 +35,7 @@
 
 
         <div v-if="!isMobile" class="stats-table-shell">
-        <el-table :data="pagedDayStats" class="stats-table" border v-loading="dayLoading">
+        <el-table size="small" :data="pagedDayStats" class="stats-table" border v-loading="dayLoading">
           <el-table-column prop="username" label="员工" />
           <el-table-column prop="consultCount" label="总咨询量">
             <template #default="{ row }">
@@ -79,7 +79,7 @@
           <el-segmented v-model="rankRange" :options="rankOptions" @change="loadSummary" />
         </div>
         <div v-if="!isMobile" class="stats-table-shell">
-        <el-table :data="pagedSummary" class="stats-table" border>
+        <el-table size="small" :data="pagedSummary" class="stats-table" border>
           <el-table-column label="排名" width="80"><template #default="{ $index }">{{ rankIcon((rankPage - 1) * rankPageSize + $index) }}</template></el-table-column>
           <el-table-column prop="username" label="员工" />
           <el-table-column prop="leadCount" label="留资量" />
@@ -117,7 +117,7 @@
         <div class="salary-layout">
           <div class="salary-table-block">
             <div class="salary-table-title">员工月度汇总</div>
-            <el-table :data="pagedSalaryUsers" border class="salary-users" @row-click="selectSalaryUser" :row-class-name="salaryRowClass">
+            <el-table size="small" :data="pagedSalaryUsers" border class="salary-users" @row-click="selectSalaryUser" :row-class-name="salaryRowClass">
               <el-table-column prop="username" label="员工" />
               <el-table-column prop="totalConsults" label="咨询" />
               <el-table-column prop="totalLeads" label="留资" />
@@ -130,7 +130,7 @@
           </div>
           <div class="salary-table-block">
             <div class="salary-table-title">{{ selectedSalaryUser?.username || '员工' }} 的每日明细</div>
-            <el-table :data="pagedSalaryDays" border class="salary-days">
+            <el-table size="small" :data="pagedSalaryDays" border class="salary-days">
               <el-table-column label="日期"><template #default="{ row }">{{ row.date?.slice(5) }}</template></el-table-column>
               <el-table-column prop="weekday" label="星期" />
               <el-table-column prop="consultCount" label="咨询" />

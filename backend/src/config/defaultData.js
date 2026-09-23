@@ -20,6 +20,16 @@ module.exports = {
     serviceTypes: ['代理记账', '公司注册', '税务筹划', '商标注册', '资质代办', '审计验资', '变更注销', '其他'],
     taxpayerTypes: ['小规模纳税人', '一般纳税人', '个体工商户']
   },
+  aiConfig: {
+    enabled: false,
+    provider: 'openai-compatible',
+    baseUrl: 'https://api.openai.com/v1',
+    model: '',
+    encryptedApiKey: '',
+    temperature: 0.1,
+    maxTokens: 800,
+    timeoutMs: 60000
+  },
   wukongSync: {
     enabled: true,
     baseUrl: '',

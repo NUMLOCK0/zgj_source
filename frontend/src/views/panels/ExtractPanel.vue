@@ -8,8 +8,8 @@
       </template>
       <el-input v-model="rawText" type="textarea" :rows="isMobile ? 8 : 12" placeholder="粘贴聊天记录、客户描述或报名信息" />
       <div class="actions extract-actions">
-        <el-button class="extract-primary-action" type="primary" :icon="MagicStick" :disabled="!hasPerm('extract')" @click="extract">提取并整理</el-button>
-        <el-button type="danger" :icon="RefreshLeft" @click="rawText = ''">清空</el-button>
+        <el-button class="extract-primary-action" type="primary" :icon="MagicStick" :loading="extracting" :disabled="!hasPerm('extract') || extracting" @click="extract">提取并整理</el-button>
+        <el-button type="danger" :icon="RefreshLeft" :disabled="extracting" @click="rawText = ''">清空</el-button>
       </div>
     </el-card>
 
@@ -104,7 +104,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { DocumentCopy, MagicStick, Plus, RefreshLeft } from '@element-plus/icons-vue'
-import { customerApi } from '../../services/api'
+import { aiApi, customerApi } from '../../services/api'
 import { copyText } from '../../utils/clipboard'
 import { extractInfo, formatCard } from '../../utils/customerExtract'
 import { useResponsive } from '../../composables/useResponsive'
@@ -121,6 +121,7 @@ const selectedStore = ref('')
 const justRegistered = ref(false)
 const registerConfirmVisible = ref(false)
 const registering = ref(false)
+const extracting = ref(false)
 
 
 function hasPerm(perm) {
@@ -153,13 +154,25 @@ function isDuplicate(row) {
 async function extract() {
   if (!hasPerm('extract')) return ElMessage.warning('无信息提取权限')
   if (!rawText.value.trim()) return ElMessage.warning('请先粘贴内容')
-  await loadCustomers()
-  cardData.value = extractInfo(rawText.value)
-  if (isDuplicate(cardData.value)) return ElMessage.warning('该客户已登记，不能重复登记')
-  // 提取成功后自动复制一次整理后的信息卡，仍可通过页面按钮再次复制。
-  await copyCard()
-  selectedStore.value = ''
-  if (hasPerm('register')) storeDialog.value = true
+  extracting.value = true
+  try {
+    await loadCustomers()
+    try {
+      const result = await aiApi.extract(rawText.value, 'customer')
+      cardData.value = result.data || extractInfo(rawText.value)
+      ElMessage.success(`AI识别完成${result.model ? `（${result.model}）` : ''}`)
+    } catch (aiError) {
+      cardData.value = extractInfo(rawText.value)
+      ElMessage.warning(`AI识别暂不可用，已使用本地规则提取：${aiError.message || '未知错误'}`)
+    }
+    if (isDuplicate(cardData.value)) return ElMessage.warning('该客户已登记，不能重复登记')
+    // 提取成功后自动复制一次整理后的信息卡，仍可通过页面按钮再次复制。
+    await copyCard()
+    selectedStore.value = ''
+    if (hasPerm('register')) storeDialog.value = true
+  } finally {
+    extracting.value = false
+  }
 }
 
 function selectStore(store) {

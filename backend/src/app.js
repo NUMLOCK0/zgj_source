@@ -16,6 +16,7 @@ const defaultDb = require('./config/defaultData');
 const { createSqliteStore } = require('./db/sqliteStore');
 const { syncCustomerToWukong, getWukongSyncSettings, updateWukongSyncSettings, fetchWukongToken, validateWukongToken } = require('./sync/wukongCustomerSync');
 const { routeAndDispatchGroupMessage, sendWecomWebhook } = require('./sync/wecomBotDispatcher');
+const { defaultConfig: defaultAiConfig, normalizeConfig: normalizeAiConfig, getPublicSettings: getPublicAiSettings, updateSettings: updateAiSettings, extractCustomerInfo } = require('./ai/customerAi');
 
 const app = express();
 const VERSION = 'v5.2.1';
@@ -169,6 +170,7 @@ function normalizeRuntimeData() {
   });
   if (!Array.isArray(db.financeStores)) db.financeStores = (defaultDb.financeStores || []).slice();
   if (!db.financeConfigs || typeof db.financeConfigs !== 'object') db.financeConfigs = Object.assign({}, defaultDb.financeConfigs || {});
+  db.aiConfig = normalizeAiConfig(Object.assign({}, defaultAiConfig(), db.aiConfig || {}));
   if (!db.wecomBotConfig || typeof db.wecomBotConfig !== 'object') {
     db.wecomBotConfig = {
       globalEnabled: true,
@@ -229,9 +231,9 @@ function saveData() {
 }
 
 // 审计日志
-function addAuditLog(userId, username, action, detail, req) {
+function addAuditLog(userId, username, action, detail, req, context = {}) {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
-  db.auditLogs.push({
+  const entry = {
     id: db.nextAuditLogId++,
     userId: userId,
     username: username,
@@ -239,7 +241,9 @@ function addAuditLog(userId, username, action, detail, req) {
     detail: detail,
     ip: ip,
     timestamp: new Date().toISOString()
-  });
+  };
+  if (context && typeof context === 'object' && Object.keys(context).length) entry.context = context;
+  db.auditLogs.push(entry);
   // 最多保留5000条
   if (db.auditLogs.length > 5000) {
     db.auditLogs = db.auditLogs.slice(-5000);
@@ -390,7 +394,14 @@ function permRequired(perm) {
     if (!user) {
       return res.status(401).json({ error: '未登录或登录已过期' });
     }
-    if (!hasPermission(user, perm)) {
+    const aliases = [perm];
+    // 财税登记表使用独立权限名，但复用了客户登记表的通用路由中间件。
+    // 在这里做路由范围内的别名映射，避免前端已显示可操作、提交时却返回 403。
+    if (req.path.startsWith('/api/finance-customers')) {
+      const financeAlias = { edit: 'financeEdit', delete: 'financeDelete', clearTable: 'financeClear' }[perm];
+      if (financeAlias) aliases.push(financeAlias);
+    }
+    if (!aliases.some(name => hasPermission(user, name))) {
       return res.status(403).json({ error: '无此操作权限' });
     }
     req.user = user;
@@ -403,7 +414,8 @@ function customerCreateRequired(req, res, next) {
   if (!user) {
     return res.status(401).json({ error: '未登录或登录已过期' });
   }
-  if (hasPermission(user, 'register') || (hasPermission(user, 'addRow') && req.body && req.body._manualAdd === true)) {
+  const financeRegister = req.path.startsWith('/api/finance-customers') && hasPermission(user, 'financeRegister');
+  if (hasPermission(user, 'register') || financeRegister || (hasPermission(user, 'addRow') && req.body && req.body._manualAdd === true)) {
     req.user = user;
     return next();
   }
@@ -1355,6 +1367,7 @@ app.post('/api/finance-customers/import', authRequired, (req, res, next) => {
 
     let added = 0;
     let changed = 0;
+    const importedIds = [];
 
     valid.forEach(item => {
       const v = item.values;
@@ -1363,6 +1376,7 @@ app.post('/api/finance-customers/import', authRequired, (req, res, next) => {
       if (existing) {
         if (onDuplicate === 'overwrite') {
           Object.assign(existing, v);
+          importedIds.push(existing.id);
           changed++;
         }
       } else {
@@ -1385,11 +1399,12 @@ app.post('/api/finance-customers/import', authRequired, (req, res, next) => {
           commission: v.commission
         };
         db.financeCustomers.push(row);
+        importedIds.push(row.id);
         added++;
       }
     });
 
-    addAuditLog(req.user.id, req.user.username, 'register', '导入财税客户登记表：新增' + added + '条，更新' + changed + '条', req);
+    addAuditLog(req.user.id, req.user.username, 'register', '导入财税客户登记表：新增' + added + '条，更新' + changed + '条', req, { recordType: 'finance', recordIds: importedIds });
     saveData();
 
     res.json({
@@ -1475,7 +1490,7 @@ app.post('/api/finance-customers', authRequired, customerCreateRequired, async (
     commission: calcFinanceCommission(!!orderNo)
   };
   db.financeCustomers.push(row);
-  addAuditLog(req.user.id, req.user.username, 'register', '登记财税客户: ' + (row.name || row.companyName || '未知') + ' (单号:' + (orderNo || '无') + ')', req);
+  addAuditLog(req.user.id, req.user.username, 'register', '登记财税客户: ' + (row.name || row.companyName || '未知') + ' (单号:' + (orderNo || '无') + ')', req, { recordType: 'finance', recordId: row.id });
   saveData();
 
   // 异步触发企微多分组/配额轮询分发推送
@@ -1512,7 +1527,7 @@ app.put('/api/finance-customers/:id', authRequired, permRequired('edit'), (req, 
   // 重新计算提成
   row.commission = calcFinanceCommission(!!String(row.orderNo || '').trim());
 
-  addAuditLog(req.user.id, req.user.username, 'edit', '修改财税客户: ' + (row.name || row.companyName || 'ID:' + id), req);
+  addAuditLog(req.user.id, req.user.username, 'edit', '修改财税客户: ' + (row.name || row.companyName || 'ID:' + id), req, { recordType: 'finance', recordId: id });
   saveData();
   res.json({ success: true, customer: row });
 });
@@ -1527,7 +1542,7 @@ app.delete('/api/finance-customers/:id', authRequired, permRequired('delete'), (
   const delName = db.financeCustomers[idx].name || db.financeCustomers[idx].companyName || 'ID:' + id;
   db.financeCustomers.splice(idx, 1);
   db.financeCustomers.forEach((c, i) => { c.seq = String(i + 1); });
-  addAuditLog(req.user.id, req.user.username, 'delete', '删除财税客户: ' + delName, req);
+  addAuditLog(req.user.id, req.user.username, 'delete', '删除财税客户: ' + delName, req, { recordType: 'finance', recordId: id });
   saveData();
   res.json({ success: true });
 });
@@ -1544,7 +1559,7 @@ app.post('/api/finance-customers/batch-delete', authRequired, permRequired('dele
     if (idx !== -1) { db.financeCustomers.splice(idx, 1); deleted++; }
   });
   db.financeCustomers.forEach(function(c, i) { c.seq = String(i + 1); });
-  addAuditLog(req.user.id, req.user.username, 'delete', '批量删除财税客户 ' + deleted + ' 条', req);
+  addAuditLog(req.user.id, req.user.username, 'delete', '批量删除财税客户 ' + deleted + ' 条', req, { recordType: 'finance', recordIds: ids.map(Number) });
   saveData();
   res.json({ success: true, deleted });
 });
@@ -1947,7 +1962,7 @@ app.post('/api/customers', authRequired, customerCreateRequired, async (req, res
       sync.reason = syncJob.lastError;
     }
   }
-  addAuditLog(req.user.id, req.user.username, 'register', '登记客户: ' + (row.name || '未知'), req);
+  addAuditLog(req.user.id, req.user.username, 'register', '登记客户: ' + (row.name || '未知'), req, { recordType: 'customer', recordId: row.id });
   saveData();
 
   // 异步触发企微多分组/配额轮询分发推送
@@ -2106,12 +2121,14 @@ app.post('/api/customers/import', authRequired, permRequired('register'), (req, 
     if (preview) return res.json(Object.assign({ preview: true }, base));
 
     let added = 0, changed = 0;
+    const importedIds = [];
     valid.forEach(v => {
       if (v.exist) {
         if (onDuplicate === 'skip') return;
         Object.keys(v.values).forEach(k => {
           if (v.values[k] !== '') v.exist[k] = v.values[k]; // 空值不覆盖已有数据
         });
+        importedIds.push(v.exist.id);
         changed++;
       } else {
         const row = {
@@ -2134,6 +2151,7 @@ app.post('/api/customers/import', authRequired, permRequired('register'), (req, 
           dealStatus: v.values.dealStatus || ''
         };
         db.customers.push(row);
+        importedIds.push(row.id);
         if (pushToSyncQueue) {
           db.wukongSyncQueue.push({
             id: row.id,
@@ -2151,7 +2169,8 @@ app.post('/api/customers/import', authRequired, permRequired('register'), (req, 
 
     if (added || changed) {
       addAuditLog(req.user.id, req.user.username, 'register',
-        '导入客户登记表：新增' + added + '条，更新' + changed + '条，跳过' + skipped + '条，失败' + failed.length + '条', req);
+        '导入客户登记表：新增' + added + '条，更新' + changed + '条，跳过' + skipped + '条，失败' + failed.length + '条', req,
+        { recordType: 'customer', recordIds: importedIds });
       saveData();
     }
 
@@ -2180,7 +2199,7 @@ app.put('/api/customers/:id', authRequired, permRequired('edit'), (req, res) => 
     }
   });
 
-  addAuditLog(req.user.id, req.user.username, 'edit', '修改客户: ' + (row.name || 'ID:' + id), req);
+  addAuditLog(req.user.id, req.user.username, 'edit', '修改客户: ' + (row.name || 'ID:' + id), req, { recordType: 'customer', recordId: id });
   saveData();
   res.json({ success: true, customer: row });
 });
@@ -2191,7 +2210,7 @@ app.put('/api/customers/:id/invalid', authRequired, permRequired('markInvalid'),
   const row = db.customers.find(c => c.id === id);
   if (!row) return res.status(404).json({ error: '记录不存在' });
   row.invalid = parseInt(req.body.invalid) || 0;
-  addAuditLog(req.user.id, req.user.username, 'edit', (row.invalid ? '标记无效: ' : '取消无效: ') + (row.name || 'ID:' + id), req);
+  addAuditLog(req.user.id, req.user.username, 'edit', (row.invalid ? '标记无效: ' : '取消无效: ') + (row.name || 'ID:' + id), req, { recordType: 'customer', recordId: id });
   saveData();
   res.json({ success: true, customer: row });
 });
@@ -2209,7 +2228,7 @@ app.post('/api/customers/batch-delete', authRequired, permRequired('delete'), (r
   });
   db.wukongSyncQueue = db.wukongSyncQueue.filter(job => !ids.map(Number).includes(Number(job.customerId)));
   db.customers.forEach(function(c, i) { c.seq = String(i + 1); });
-  addAuditLog(req.user.id, req.user.username, 'delete', '批量删除客户 ' + deleted + ' 条', req);
+  addAuditLog(req.user.id, req.user.username, 'delete', '批量删除客户 ' + deleted + ' 条', req, { recordType: 'customer', recordIds: ids.map(Number) });
   saveData();
   res.json({ success: true, deleted: deleted });
 });
@@ -2236,7 +2255,7 @@ app.delete('/api/customers/:id', authRequired, permRequired('delete'), (req, res
   db.customers.splice(idx, 1);
   db.wukongSyncQueue = db.wukongSyncQueue.filter(job => Number(job.customerId) !== id);
   db.customers.forEach((c, i) => { c.seq = String(i + 1); });
-  addAuditLog(req.user.id, req.user.username, 'delete', '删除客户: ' + delName, req);
+  addAuditLog(req.user.id, req.user.username, 'delete', '删除客户: ' + delName, req, { recordType: 'customer', recordId: id });
   saveData();
   res.json({ success: true });
 });
@@ -2253,7 +2272,7 @@ app.post('/api/customers/batch-assign', authRequired, permRequired('edit'), (req
     const row = db.customers.find(function(c) { return c.id === parseInt(id); });
     if (row) { row.assignedTo = assignedTo; updated++; }
   });
-  addAuditLog(req.user.id, req.user.username, 'edit', '批量分配销售 ' + updated + ' 条给' + (assignedTo || '空'), req);
+  addAuditLog(req.user.id, req.user.username, 'edit', '批量分配销售 ' + updated + ' 条给' + (assignedTo || '空'), req, { recordType: 'customer', recordIds: ids.map(Number) });
   saveData();
   res.json({ success: true, updated: updated });
 });
@@ -2666,6 +2685,57 @@ app.post('/api/feedback-records/:id/confirm-invalid', authRequired, (req, res) =
   customer.feedbackStatus = 'confirmed_invalid';
   saveData();
   res.json({ success: true });
+});
+
+// AI客户信息识别设置。API Key仅在服务端加密保存，不会返回给浏览器。
+app.get('/api/ai-settings', adminRequired, (req, res) => {
+  res.json({ settings: getPublicAiSettings(db.aiConfig) });
+});
+
+app.put('/api/ai-settings', adminRequired, (req, res) => {
+  const input = req.body || {};
+  if (input.baseUrl !== undefined && input.baseUrl && !/^https?:\/\//i.test(String(input.baseUrl).trim())) {
+    return res.status(400).json({ error: '接口地址必须以 http:// 或 https:// 开头' });
+  }
+  if (input.model !== undefined && String(input.model).trim().length > 120) {
+    return res.status(400).json({ error: '模型名称过长' });
+  }
+  db.aiConfig = updateAiSettings(db.aiConfig, input);
+  addAuditLog(req.user.id, req.user.username, 'ai_config', '更新AI客户信息识别配置', req);
+  saveData();
+  res.json({ success: true, settings: getPublicAiSettings(db.aiConfig) });
+});
+
+app.post('/api/ai-extract', authRequired, async (req, res) => {
+  if (!hasPermission(req.user, 'extract') && !hasPermission(req.user, 'financeExtract')) {
+    return res.status(403).json({ error: '无信息提取权限' });
+  }
+  const rawText = String(req.body?.text || '').trim();
+  const type = req.body?.type === 'finance' ? 'finance' : 'customer';
+  if (!rawText) return res.status(400).json({ error: '请先粘贴需要识别的内容' });
+  if (rawText.length > 20000) return res.status(400).json({ error: '识别内容不能超过 20000 字' });
+  try {
+    const data = await extractCustomerInfo(db.aiConfig, type, rawText);
+    addAuditLog(req.user.id, req.user.username, 'ai_extract', `AI识别${type === 'finance' ? '财税' : '职称'}客户信息`, req);
+    res.json({ success: true, source: 'ai', model: db.aiConfig.model, data });
+  } catch (error) {
+    console.error('[AI识别失败]', JSON.stringify({
+      type,
+      endpoint: db.aiConfig?.baseUrl || '',
+      model: db.aiConfig?.model || '',
+      provider: db.aiConfig?.provider || '',
+      temperature: db.aiConfig?.temperature,
+      maxTokens: db.aiConfig?.maxTokens,
+      timeoutMs: db.aiConfig?.timeoutMs,
+      textLength: rawText.length,
+      statusCode: error.statusCode || null,
+      errorName: error.name || '',
+      errorCode: error.code || '',
+      error: error.message || '未知错误',
+      responseBody: error.responseBody || ''
+    }));
+    res.status(502).json({ error: error.message || 'AI识别失败' });
+  }
 });
 
 // 悟空CRM同步设置。凭据与Token仅在服务端加密保存，不会返回给浏览器。
@@ -3414,7 +3484,23 @@ app.get('/api/version', (req, res) => {
   res.json({ version: VERSION });
 });
 
-// 审计日志查询（仅管理员）
+// 登记记录操作日志查询（登录用户可按记录查看）
+app.get('/api/record-logs/:recordType/:recordId', authRequired, (req, res) => {
+  const recordType = String(req.params.recordType || '').trim();
+  const recordId = Number(req.params.recordId);
+  if (!['customer', 'finance'].includes(recordType) || !Number.isInteger(recordId)) {
+    return res.status(400).json({ error: '无效的登记记录' });
+  }
+  const logs = (db.auditLogs || []).slice().reverse().filter(log => {
+    const context = log.context || {};
+    return context.recordType === recordType && (
+      Number(context.recordId) === recordId ||
+      (Array.isArray(context.recordIds) && context.recordIds.map(Number).includes(recordId))
+    );
+  });
+  res.json({ logs });
+});
+
 app.get('/api/audit-logs', authRequired, adminRequired, (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;

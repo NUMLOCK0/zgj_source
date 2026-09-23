@@ -10,7 +10,7 @@
           </div>
         </div>
 
-        <el-table v-if="!isMobile" :data="pagedProjects" border class="data-table">
+        <el-table size="small" v-if="!isMobile" :data="pagedProjects" border class="data-table">
           <el-table-column prop="id" label="ID" width="70" />
           <el-table-column prop="name" label="项目名称" min-width="150" />
           <el-table-column prop="ownerName" label="创建人" min-width="110" />
@@ -103,7 +103,7 @@
             <el-button :icon="Download" @click="exportTasks">导出题目</el-button>
           </div>
 
-          <el-table v-if="!isMobile" :data="tasks" border>
+          <el-table size="small" v-if="!isMobile" :data="tasks" border>
             <el-table-column prop="id" label="ID" width="70" />
             <el-table-column label="题目" min-width="300">
               <template #default="{ row }">
@@ -126,7 +126,7 @@
         </el-card>
       </el-tab-pane>
 
-      <el-tab-pane v-if="hasPerm('qrGen')" label="无痕码" name="qr">
+      <el-tab-pane v-if="!props.onlyTasks && hasPerm('qrGen')" label="无痕码" name="qr">
         <el-card shadow="never" class="tool-panel qr-card">
           <template #header>
             <div class="panel-head"><div><strong>无痕码生成器</strong><div class="muted-text">组合商品后生成下单二维码与链接</div></div></div>
@@ -180,7 +180,7 @@ import { taskApi } from '../../services/api'
 import { copyText as copyToClipboard } from '../../utils/clipboard'
 import { useResponsive } from '../../composables/useResponsive'
 
-const props = defineProps({ user: Object, hasPerm: Function })
+const props = defineProps({ user: Object, hasPerm: Function, onlyTasks: Boolean })
 const { isMobile } = useResponsive()
 const tab = ref(props.hasPerm('taskManage') ? 'manage' : 'qr')
 const projects = ref([])

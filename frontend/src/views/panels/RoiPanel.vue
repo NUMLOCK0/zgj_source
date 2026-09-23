@@ -80,7 +80,7 @@
           <div class="lead-stat-card"><div class="lead-label">转化率</div><div class="lead-num">{{ dashboard.totals.convRate }}%</div></div>
         </div>
 
-        <el-table v-if="dashboard?.products?.length" :data="dashboard.products" border class="data-table mt-12">
+        <el-table size="small" v-if="dashboard?.products?.length" :data="dashboard.products" border class="data-table mt-12">
           <el-table-column prop="productName" label="产品" min-width="120" />
           <el-table-column prop="gmv" label="GMV" min-width="100"><template #default="{ row }">¥{{ fmt(row.gmv) }}</template></el-table-column>
           <el-table-column prop="realGmv" label="真实GMV" min-width="100"><template #default="{ row }">¥{{ fmt(row.realGmv) }}</template></el-table-column>
@@ -117,7 +117,7 @@
             <div class="lead-stat-card"><div class="lead-label">ROI阈值</div><div class="lead-num">{{ salaryData.settings.roiThreshold }}</div></div>
           </div>
 
-          <el-table :data="salaryData.users" border class="data-table mt-12">
+          <el-table size="small" :data="salaryData.users" border class="data-table mt-12">
             <el-table-column prop="user" label="员工" min-width="100" />
             <el-table-column prop="totalGmv" label="总GMV" min-width="100"><template #default="{ row }">¥{{ fmt(row.totalGmv) }}</template></el-table-column>
             <el-table-column prop="totalRealGmv" label="真实GMV" min-width="100"><template #default="{ row }">¥{{ fmt(row.totalRealGmv) }}</template></el-table-column>

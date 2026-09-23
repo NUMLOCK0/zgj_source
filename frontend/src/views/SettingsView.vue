@@ -1,84 +1,5 @@
 <template>
   <section class="settings-page">
-    <template v-if="section === 'profile'">
-    <div v-if="isMobile" class="mobile-settings-home">
-      <div class="mobile-settings-group-title">个人设置</div>
-      <div class="mobile-settings-group">
-        <button class="mobile-settings-item" @click="pwdDialog = true">
-          <span class="mobile-settings-icon icon-blue"><el-icon><Lock /></el-icon></span>
-          <span>修改密码</span>
-          <el-icon class="mobile-settings-arrow"><ArrowRight /></el-icon>
-        </button>
-      </div>
-
-      <template v-if="user.isAdmin">
-        <div class="mobile-settings-group-title">账号管理</div>
-        <div class="mobile-settings-group">
-          <button class="mobile-settings-item" @click="go('settings-accounts')">
-            <span class="mobile-settings-icon icon-green"><el-icon><UserFilled /></el-icon></span>
-            <span>账号列表与权限</span>
-            <el-icon class="mobile-settings-arrow"><ArrowRight /></el-icon>
-          </button>
-          <button class="mobile-settings-item" @click="go('settings-customer-config')">
-            <span class="mobile-settings-icon icon-orange"><el-icon><Tools /></el-icon></span>
-            <span>客户配置</span>
-            <el-icon class="mobile-settings-arrow"><ArrowRight /></el-icon>
-          </button>
-          <button class="mobile-settings-item" @click="go('settings-sync')">
-            <span class="mobile-settings-icon icon-purple"><el-icon><Connection /></el-icon></span>
-            <span>同步设置</span>
-            <el-icon class="mobile-settings-arrow"><ArrowRight /></el-icon>
-          </button>
-          <!-- 人脸录入管理菜单暂时隐藏，保留组件、路由和业务代码 -->
-          <!--
-          <button class="mobile-settings-item" @click="go('settings-face-enroll')">
-            <span class="mobile-settings-icon icon-cyan"><el-icon><Camera /></el-icon></span>
-            <span>人脸录入管理</span>
-            <el-icon class="mobile-settings-arrow"><ArrowRight /></el-icon>
-          </button>
-          -->
-          <button class="mobile-settings-item" @click="go('settings-audit')">
-            <span class="mobile-settings-icon icon-violet"><el-icon><DocumentChecked /></el-icon></span>
-            <span>操作审计日志</span>
-            <el-icon class="mobile-settings-arrow"><ArrowRight /></el-icon>
-          </button>
-        </div>
-      </template>
-
-      <div class="mobile-settings-group-title">关于</div>
-      <div class="mobile-settings-group">
-        <div class="mobile-settings-item static-item">
-          <span class="mobile-settings-icon icon-gray"><el-icon><Files /></el-icon></span>
-          <span>产品名称</span>
-          <strong>创赢工具箱</strong>
-        </div>
-        <div class="mobile-settings-item static-item">
-          <span class="mobile-settings-icon icon-gray"><el-icon><InfoFilled /></el-icon></span>
-          <span>当前版本</span>
-          <strong>v5.2.1</strong>
-        </div>
-        <button class="mobile-settings-item logout-item" @click="emit('logout')">
-          <span class="mobile-settings-icon icon-red"><el-icon><SwitchButton /></el-icon></span>
-          <span>退出登录</span>
-        </button>
-      </div>
-      <div class="mobile-settings-footer">创赢工具箱</div>
-    </div>
-
-    <template v-else>
-    <div class="settings-section-title">个人设置</div>
-    <el-card shadow="never" class="settings-card">
-      <div class="settings-row">
-        <div>
-          <div class="settings-row-label">登录密码</div>
-          <div class="settings-row-desc">修改当前账号的登录密码</div>
-        </div>
-        <el-button type="primary" @click="pwdDialog = true">修改密码</el-button>
-      </div>
-    </el-card>
-    </template>
-    </template>
-
     <template v-if="user.isAdmin && section === 'accounts'">
       <div class="settings-section-title">账号管理</div>
       <el-card shadow="never" class="settings-card">
@@ -97,7 +18,7 @@
           <span class="muted-text">{{ filteredUsers.length }} 条</span>
         </div>
 
-        <el-table v-if="!isMobile" :data="pagedUsers" border class="settings-table">
+        <el-table size="small" v-if="!isMobile" :data="pagedUsers" border class="settings-table">
           <el-table-column prop="username" label="用户名" min-width="140">
             <template #default="{ row }">
               <span>{{ row.username }}</span>
@@ -160,7 +81,7 @@
             </div>
           </div>
         </template>
-        <el-table v-if="!isMobile" :data="users" border class="settings-table">
+        <el-table size="small" v-if="!isMobile" :data="users" border class="settings-table">
           <el-table-column prop="username" label="用户名" min-width="140">
             <template #default="{ row }">
               <span>{{ row.username }}</span>
@@ -194,7 +115,8 @@
       </el-card>
     </template>
 
-    <CustomerConfigSettings v-if="user.isAdmin && section === 'customer-config'" />
+    <BusinessConfigSettings v-if="user.isAdmin && section === 'business-config'" />
+    <AiModelSettings v-if="user.isAdmin && section === 'ai'" />
     <WukongSyncSettings v-if="user.isAdmin && section === 'sync'" />
 
     <template v-if="user.isAdmin && section === 'audit'">
@@ -206,7 +128,7 @@
           </el-select>
           <el-button @click="loadLogs">刷新</el-button>
         </div>
-        <el-table v-if="!isMobile" :data="pagedLogs" border class="settings-table">
+        <el-table size="small" v-if="!isMobile" :data="pagedLogs" border class="settings-table">
           <el-table-column prop="timestamp" label="时间" min-width="170" />
           <el-table-column prop="username" label="账号" min-width="100" />
           <el-table-column label="动作" min-width="120"><template #default="{ row }">{{ actionLabel(row.action) }}</template></el-table-column>
@@ -232,20 +154,6 @@
         />
       </el-card>
     </template>
-
-    <el-dialog v-model="pwdDialog" title="修改密码" :width="isMobile ? '94%' : '420px'" :top="isMobile ? '18vh' : '15vh'" :close-on-click-modal="false" class="responsive-dialog settings-mobile-dialog">
-      <el-form class="settings-dialog-form" label-position="top">
-        <el-form-item label="旧密码"><el-input v-model="pwd.oldPassword" type="password" show-password /></el-form-item>
-        <el-form-item label="新密码"><el-input v-model="pwd.newPassword" type="password" show-password /></el-form-item>
-        <el-form-item label="确认新密码"><el-input v-model="pwd.confirmPassword" type="password" show-password /></el-form-item>
-      </el-form>
-      <template #footer>
-        <div class="settings-dialog-actions">
-          <el-button size="large" @click="pwdDialog = false">取消</el-button>
-          <el-button size="large" type="primary" @click="changePassword">确定修改</el-button>
-        </div>
-      </template>
-    </el-dialog>
 
     <el-dialog
       v-model="userDialog"
@@ -310,13 +218,14 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowRight, Camera, Connection, DocumentChecked, Files, InfoFilled, Lock, Plus, Search, SwitchButton, Tools, UserFilled } from '@element-plus/icons-vue'
+import { Plus, Search } from '@element-plus/icons-vue'
 import { permissionGroups } from '../constants'
-import { authApi, statsApi, userApi, punchApi } from '../services/api'
+import { statsApi, userApi, punchApi } from '../services/api'
 import { useResponsive } from '../composables/useResponsive'
-import CustomerConfigSettings from '../components/CustomerConfigSettings.vue'
+import BusinessConfigSettings from '../components/BusinessConfigSettings.vue'
+import AiModelSettings from '../components/AiModelSettings.vue'
 import WukongSyncSettings from '../components/WukongSyncSettings.vue'
 import FaceEnroll from '../components/FaceEnroll.vue'
 
@@ -324,10 +233,7 @@ const props = defineProps({ user: Object, hasPerm: Function })
 const emit = defineEmits(['user-updated', 'logout'])
 const { isMobile } = useResponsive()
 const route = useRoute()
-const router = useRouter()
-const section = computed(() => route.meta.section || 'profile')
-const pwd = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
-const pwdDialog = ref(false)
+const section = computed(() => route.meta.section || 'business-config')
 const users = ref([])
 const userKeyword = ref('')
 const userPage = ref(1)
@@ -367,26 +273,6 @@ const auditActions = [
   ['clear_table', '清空登记表'], ['consult_edit', '录入咨询量'], ['task_import', '导入题目'],
   ['wukong_sync_config', '更新同步设置'], ['wukong_sync_token', '获取CRM Token'], ['wukong_sync_run', '执行客户同步'], ['roi_settings', 'ROI参数修改'], ['roi_product', 'ROI产品管理'], ['punch_settings', '打卡设置修改'], ['punch_employee', '人脸录入管理']
 ].map(([value, label]) => ({ value, label }))
-
-function go(name) {
-  if (route.name !== name) router.push({ name })
-}
-
-async function changePassword() {
-  if (!pwd.oldPassword || !pwd.newPassword) return ElMessage.warning('请填写旧密码和新密码')
-  if (pwd.newPassword !== pwd.confirmPassword) return ElMessage.warning('两次新密码不一致')
-  if (pwd.newPassword.length < 3) return ElMessage.warning('新密码至少3位')
-  try {
-    await authApi.changePassword({ oldPassword: pwd.oldPassword, newPassword: pwd.newPassword })
-    pwd.oldPassword = ''
-    pwd.newPassword = ''
-    pwd.confirmPassword = ''
-    pwdDialog.value = false
-    ElMessage.success('密码已修改')
-  } catch (err) {
-    ElMessage.error(err.message || '修改失败')
-  }
-}
 
 async function loadUsers() {
   if (!props.user.isAdmin && !hasPerm('punchFace')) return

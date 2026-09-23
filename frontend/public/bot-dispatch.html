@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>企微销售群机器人分组与配额分发调度台</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      padding: 16px;
+      padding-bottom: 50px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .dispatch-header {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    }
+    .dh-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .dh-sub {
+      font-size: 12.5px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .group-card {
+      background: #ffffff;
+      border-radius: 14px;
+      border: 1px solid #e2e8f0;
+      margin-bottom: 14px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+    }
+    .gc-head {
+      padding: 14px 16px;
+      background: #fafafa;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .gc-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    .gc-body {
+      padding: 16px;
+    }
+    
+    .time-setting-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12.5px;
+      margin-bottom: 14px;
+    }
+    .time-inputs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .time-in {
+      padding: 2px 6px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 12px;
+      background: #fff;
+    }
+
+    /* 机器人卡片列表 */
+    .bot-item-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      background: #ffffff;
+    }
+    .bot-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .bot-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    .bot-quota-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #f1f5f9;
+      font-size: 13px;
+    }
+    .quota-input {
+      width: 70px;
+      height: 28px;
+      text-align: center;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      background: #f8fafc;
+    }
+    .quota-input:focus { border-color: #0ea5e9; background: #fff; }
+
+    /* Switch */
+    .we-switch {
+      position: relative; display: inline-block; width: 38px; height: 20px;
+    }
+    .we-switch input { opacity: 0; width: 0; height: 0; }
+    .we-slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #cbd5e1; transition: .2s; border-radius: 20px;
+    }
+    .we-slider:before {
+      position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
+      background-color: white; transition: .2s; border-radius: 50%;
+    }
+    input:checked + .we-slider { background-color: #0ea5e9; }
+    input:checked + .we-slider:before { transform: translateX(18px); }
+
+    /* 进度条 */
+    .p-bar-wrap { margin: 8px 0; }
+    .p-bar-bg { height: 7px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+    .p-bar-fill { height: 100%; background: #0ea5e9; border-radius: 4px; }
+    .p-bar-fill.full { background: #10b981; }
+
+    .btn-reset-group {
+      width: 100%;
+      padding: 9px;
+      background: #f8fafc;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+    .btn-reset-group:active { background: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="dispatch-header">
+    <div class="dh-title">
+      <span>📱 销售线索排班与分流调度台</span>
+      <span style="font-size:11px; font-weight:600; background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:10px;">主管专属</span>
+    </div>
+    <div class="dh-sub">随时微调各销售群进客配额、开启/暂停班次、今日计数清零</div>
+  </div>
+
+  <div id="groups-container">
+    <div style="text-align:center; padding:40px; color:#94a3b8;">加载中...</div>
+  </div>
+
+  <script>
+    let groupsData = [];
+
+    async function loadDispatchData() {
+      try {
+        const res = await fetch('/api/public/leader-bot-manage');
+        if (res.ok) {
+          const data = await res.json();
+          groupsData = data.groups || [];
+          renderGroups();
+        }
+      } catch (e) {
+        console.error('加载失败:', e);
+      }
+    }
+
+    function renderGroups() {
+      const c = document.getElementById('groups-container');
+      if (groupsData.length === 0) {
+        c.innerHTML = `<div style="text-align:center; padding:40px; color:#94a3b8;">暂无可调度的销售分组</div>`;
+        return;
+      }
+
+      c.innerHTML = groupsData.map(g => {
+        const tr = (g.timeRanges && g.timeRanges[0]) || { start: '09:00', end: '18:00' };
+        const bots = g.bots || [];
+
+        return `
+          <div class="group-card">
+            <div class="gc-head">
+              <div class="gc-title">${escapeHtml(g.name)}</div>
+              <label class="we-switch">
+                <input type="checkbox" data-g-switch="${g.id}" ${g.enabled ? 'checked' : ''}>
+                <span class="we-slider"></span>
+              </label>
+            </div>
+            <div class="gc-body">
+              <div class="time-setting-bar">
+                <span>⏰ <b>班次时段:</b></span>
+                <div class="time-inputs">
+                  <input type="time" class="time-in" data-g-start="${g.id}" value="${tr.start}" />
+                  <span>至</span>
+                  <input type="time" class="time-in" data-g-end="${g.id}" value="${tr.end}" />
+                </div>
+              </div>
+
+              ${bots.map(b => {
+                const count = Number(b.todayCount) || 0;
+                const quota = Number(b.dailyQuota) || 0;
+                const pct = quota > 0 ? Math.min(100, Math.round(count / quota * 100)) : 100;
+                const isFull = quota > 0 && count >= quota;
+
+                return `
+                  <div class="bot-item-card">
+                    <div class="bot-head">
+                      <span class="bot-name">${escapeHtml(b.name)}</span>
+                      <label class="we-switch">
+                        <input type="checkbox" data-bot-switch="${g.id}_${b.id}" ${b.enabled ? 'checked' : ''}>
+                        <span class="we-slider"></span>
+                      </label>
+                    </div>
+
+                    <div class="p-bar-wrap">
+                      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                        <span style="color:#64748b;">今日进客进度</span>
+                        <span style="font-weight:700; color:${isFull ? '#10b981' : '#0ea5e9'};">${count} / ${quota > 0 ? quota + ' 条' : '无限制'}</span>
+                      </div>
+                      <div class="p-bar-bg">
+                        <div class="p-bar-fill ${isFull ? 'full' : ''}" style="width:${pct}%;"></div>
+                      </div>
+                    </div>
+
+                    <div class="bot-quota-row">
+                      <span style="color:#475569;">修改单日分流配额 (条):</span>
+                      <input type="number" class="quota-input" min="0" data-bot-quota="${g.id}_${b.id}" value="${quota}" />
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+
+              <button class="btn-reset-group" data-g-reset="${g.id}">🔄 清零该组今日计数 (重新开始分发)</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      bindEvents();
+    }
+
+    function bindEvents() {
+      // 分组开关
+      document.querySelectorAll('[data-g-switch]').forEach(chk => {
+        chk.addEventListener('change', async (e) => {
+          const id = e.target.dataset.gSwitch;
+          await fetch(`/api/public/leader-bot-manage/group/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: e.target.checked })
+          });
+        });
+      });
+
+      // 班次时段修改
+      document.querySelectorAll('[data-g-start], [data-g-end]').forEach(inEl => {
+        inEl.addEventListener('change', async () => {
+          const id = inEl.dataset.gStart || inEl.dataset.gEnd;
+          const s = document.querySelector(`[data-g-start="${id}"]`).value;
+          const end = document.querySelector(`[data-g-end="${id}"]`).value;
+          await fetch(`/api/public/leader-bot-manage/group/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timeRanges: [{ start: s, end: end }] })
+          });
+        });
+      });
+
+      // 机器人开关
+      document.querySelectorAll('[data-bot-switch]').forEach(chk => {
+        chk.addEventListener('change', async (e) => {
+          const [gId, bId] = e.target.dataset.botSwitch.split('_');
+          await fetch(`/api/public/leader-bot-manage/group/${gId}/bot/${bId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: e.target.checked })
+          });
+        });
+      });
+
+      // 修改配额
+      document.querySelectorAll('[data-bot-quota]').forEach(inEl => {
+        inEl.addEventListener('change', async (e) => {
+          const [gId, bId] = e.target.dataset.botQuota.split('_');
+          const quota = parseInt(e.target.value) || 0;
+          await fetch(`/api/public/leader-bot-manage/group/${gId}/bot/${bId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dailyQuota: quota })
+          });
+          loadDispatchData();
+        });
+      });
+
+      // 清零计数
+      document.querySelectorAll('[data-g-reset]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = btn.dataset.gReset;
+          if (!confirm('确定清零今日已发计数吗？')) return;
+          await fetch(`/api/public/leader-bot-manage/group/${id}/reset`, { method: 'POST' });
+          loadDispatchData();
+        });
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+    }
+
+    loadDispatchData();
+  </script>
+</body>
+</html>

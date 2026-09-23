@@ -3,6 +3,40 @@ function todayText() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`
 }
 
+const TITLE_LEVELS = ['初级', '中级', '副高', '正高']
+
+export function normalizeTitleLevel(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  if (/正高|正高级|教授级/.test(text)) return '正高'
+  if (/副高|副高级|高级工程师/.test(text)) return '副高'
+  if (/中级/.test(text)) return '中级'
+  if (/初级|助理|员级/.test(text)) return '初级'
+  return text
+}
+
+export function completeTitleLevels(value) {
+  const result = { ...value }
+  result.applyLevel = normalizeTitleLevel(result.applyLevel)
+  const applyIndex = TITLE_LEVELS.indexOf(result.applyLevel)
+  result.titleLevel = applyIndex > 0 ? TITLE_LEVELS[applyIndex - 1] : ''
+  return result
+}
+
+export function extractApplyTitle(text) {
+  const patterns = [
+    /(?:申报|报考|申请|想评|要评|准备评|拟评|报|评)[\s:：,，-]*(?:职称|级别|职务)?[\s:：,，-]*(正高(?:级)?|副高(?:级)?|高级工程师|中级(?:职称)?|工程师|初级(?:职称)?|助理工程师|技术员|员级)/,
+    /(?:申报职称|申报级别|目标职称|目标级别)[^\n，,。；;]{0,8}?(正高(?:级)?|副高(?:级)?|高级工程师|中级(?:职称)?|工程师|初级(?:职称)?|助理工程师|技术员|员级)/
+  ]
+  for (const pattern of patterns) {
+    const match = String(text || '').match(pattern)
+    if (match?.[1]) return normalizeTitleLevel(match[1])
+  }
+  const directMatch = String(text || '').match(/(正高(?:级)?|副高(?:级)?|高级工程师|中级(?:工程师|职称)?|工程师|初级(?:工程师|职称)?|助理工程师|技术员|员级)/)
+  if (directMatch?.[1]) return normalizeTitleLevel(directMatch[1])
+  return ''
+}
+
 export function extractPhone(text) {
   const compact = text.match(/1[3-9]\d{9}/)
   if (compact) return compact[0]
@@ -127,17 +161,10 @@ export function extractRemarks(text) {
   return [...new Set(kept)].slice(0, 6).join('，') || '无'
 }
 
-export function autoJudge(edu, title, ss, rawText) {
+export function autoJudge(edu, title, ss, rawText, applyLevel = '') {
   const currentYear = new Date().getFullYear()
   const issues = []
-  let targetLevel = ''
-  if (/报副高|评副高|副高级|报高级|评高级/.test(rawText)) targetLevel = '副高'
-  else if (/报正高|评正高|正高级/.test(rawText)) targetLevel = '正高'
-  else if (/报中级|评中级|中级职称/.test(rawText)) targetLevel = '中级'
-  else if (title.level === '无' || title.level === '初级') targetLevel = '中级'
-  else if (title.level === '中级') targetLevel = '副高'
-  else if (title.level === '副高') targetLevel = '正高'
-  else targetLevel = '待确认'
+  const targetLevel = applyLevel || '待确认'
 
   if (edu.degree && title.level) {
     if (targetLevel === '正高' && ['大专', '中专/高中'].includes(edu.degree)) issues.push('学历不足，不能申报正高级')
@@ -148,8 +175,9 @@ export function autoJudge(edu, title, ss, rawText) {
       if (edu.degree === '本科' && years < 5) issues.push(`本科毕业需满5年，目前${years}年`)
       if (edu.degree === '硕士' && years < 2) issues.push(`硕士毕业需满2年，目前${years}年`)
     }
-    if (targetLevel === '副高' && title.year && currentYear - title.year < 5) issues.push(`中级取得需满5年，目前${currentYear - title.year}年`)
+  if (targetLevel === '副高' && title.year && currentYear - title.year < 5) issues.push(`中级取得需满5年，目前${currentYear - title.year}年`)
   }
+  if (!applyLevel) return { type: '待确认', targetLevel, conclusion: '未识别到申报职称，需进一步确认申报级别' }
   if (!ss.hasSocialSecurity) issues.push('无社保记录')
   if (/公务员|参公/.test(rawText)) issues.push('公务员不得申报职称评审')
   if (/退休|快退休/.test(rawText)) issues.push('接近退休年龄可能影响申报')
@@ -164,17 +192,18 @@ export function extractInfo(text) {
   const reviewMajor = extractReviewMajor(text)
   const edu = extractEducation(text)
   const title = extractTitle(text)
+  const applyLevel = extractApplyTitle(text)
   const ss = extractSocialSecurity(text)
   const remarks = extractRemarks(text)
-  const judge = autoJudge(edu, title, ss, text)
-  return {
+  const judge = autoJudge(edu, title, ss, text, applyLevel)
+  const result = completeTitleLevels({
     date: todayText(),
     name: '',
     phone,
     wechat,
     degree: edu.degree,
     major: edu.major,
-    titleLevel: title.level,
+    titleLevel: '',
     ssCity: ss.city,
     reviewMajor,
     applyLevel: judge.targetLevel === '待确认' ? '' : judge.targetLevel,
@@ -189,7 +218,9 @@ export function extractInfo(text) {
       title: title.text,
       ss: ss.text
     }
-  }
+  })
+  if (result._card) result._card.title = result.titleLevel || '未识别'
+  return result
 }
 
 export function formatCard(row) {

@@ -1,33 +1,12 @@
 <template>
-  <LoginView v-if="!currentUser" @login="handleLogin" />
+  <div v-if="!authReady" class="auth-bootstrap-screen" aria-label="正在检查登录状态">
+    <div class="auth-bootstrap-mark">创</div>
+  </div>
+  <LoginView v-else-if="!currentUser" @login="handleLogin" />
   <div v-else class="app-shell">
-    <header class="topbar">
-      <div class="brand">
-        <el-icon><Suitcase /></el-icon>
-        <div>
-          <strong>创赢工具箱</strong>
-          <span>客户管理 · 运营 · 考勤</span>
-        </div>
-      </div>
-      <div class="top-actions">
-        <el-button :icon="isDark ? Sunny : Moon" text @click="toggleDark" :title="isDark ? '浅色模式' : '深色模式'" />
-        <el-tag effect="plain">{{ currentUser.name || currentUser.username }}</el-tag>
-        <el-button :icon="SwitchButton" text @click="logout">退出</el-button>
-      </div>
-    </header>
+    <ModernSidebar v-if="!isMobile" :menu-sections="menuSections" :current-route-name="currentRouteName" :user="currentUser" @navigate="go" @logout="logout" />
 
-    <SidebarMenu
-      v-if="!isMobile"
-      v-model:collapsed="sidebarCollapsed"
-      :menu="sidebarMenu"
-      :width="'184px'"
-      :width-collapsed="'64px'"
-      :show-one-child="true"
-      theme="white-theme"
-      class="app-sidebar"
-    />
-
-    <main class="main" :class="{ mobile: isMobile, collapsed: sidebarCollapsed && !isMobile }">
+    <main class="main" :class="{ mobile: isMobile }">
       <RouterView v-slot="{ Component }">
         <Transition name="fade-slide" mode="out-in">
           <component
@@ -45,15 +24,10 @@
 
     <div v-if="!isOnline" class="network-banner">网络连接已断开，请检查网络</div>
 
-    <nav v-if="isMobile" class="mobile-nav">
-      <button
-        v-for="item in visibleNav"
-        :key="item.key"
-        :class="{ active: isNavActive(item) }"
-        @click="item.children ? go('settings-profile') : go(item.key)"
-      >
-        <el-icon><component :is="item.icon" /></el-icon>
-        <span>{{ item.label }}</span>
+    <nav v-if="isMobile" class="app-mobile-tabbar">
+      <button v-for="item in mobileNav" :key="item.key" class="tabbar-item" :class="{ active: isNavActive(item) }" type="button" @click="go(item.route)">
+        <span class="tabbar-icon-wrap"><el-icon><component :is="item.icon" /></el-icon></span>
+        <span class="tabbar-label">{{ item.label }}</span>
       </button>
     </nav>
   </div>
@@ -62,10 +36,10 @@
 <script setup>
 import { computed, onErrorCaptured, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
-import { SidebarMenu } from 'vue-sidebar-menu'
 import { ElMessage } from 'element-plus'
-import { Collection, DataAnalysis, DocumentChecked, Setting, Suitcase, SwitchButton, Clock, TrendCharts, Moon, Sunny } from '@element-plus/icons-vue'
+import { Collection, DataAnalysis, DocumentChecked, Setting, TrendCharts } from '@element-plus/icons-vue'
 import LoginView from './views/LoginView.vue'
+import ModernSidebar from './components/ModernSidebar.vue'
 import { authApi } from './services/api'
 import { useResponsive } from './composables/useResponsive'
 
@@ -73,36 +47,27 @@ const { isMobile } = useResponsive()
 const route = useRoute()
 const router = useRouter()
 const currentUser = ref(null)
+const authReady = ref(false)
 const reloadCustomersSignal = ref(0)
 const isOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
-const isDark = ref(typeof localStorage !== 'undefined' && localStorage.getItem('theme') === 'dark')
-
-function toggleDark() {
-  isDark.value = !isDark.value
-  if (typeof document !== 'undefined') {
-    document.documentElement.dataset.theme = isDark.value ? 'dark' : ''
-  }
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
-  }
-}
 
 const nav = [
+  { key: 'dashboard', label: '工作台', icon: DataAnalysis, any: ['viewData', 'financeView', 'leadStats'] },
   { key: 'customer', label: '客户管理', icon: Collection, any: ['extract', 'viewData', 'leadStats'] },
-  { key: 'operation', label: '运营管理', icon: TrendCharts, any: ['taskManage', 'qrGen', 'roiView'] },
+  { key: 'finance', label: '财税登记', icon: DocumentChecked, any: ['financeView', 'financeRegister', 'financeEdit'] },
+  { key: 'finance-ledger', label: '个人记账', icon: DataAnalysis, any: ['financeView', 'viewData'] },
+  { key: 'operation', label: '运营管理', icon: TrendCharts, any: ['taskManage', 'qrGen'] },
   // { key: 'punch', label: '考勤打卡', icon: Clock, any: ['punchUse', 'punchView'] },
   { key: 'settings', label: '设置', icon: Setting, always: true, children: true }
 ]
 const settingsChildren = [
-  { key: 'settings-profile', label: '个人设置' },
   { key: 'settings-accounts', label: '账号管理', admin: true },
-  { key: 'settings-customer-config', label: '客户配置', admin: true },
+  { key: 'settings-business-config', label: '客户与财税配置', admin: true },
+  { key: 'settings-ai', label: 'AI识别配置', admin: true },
   { key: 'settings-sync', label: '同步设置', admin: true },
   // { key: 'settings-face-enroll', label: '人脸录入', perm: 'punchFace' },
   { key: 'settings-audit', label: '操作日志', admin: true }
 ]
-const sidebarCollapsed = ref(false)
-
 function hasPerm(perm) {
   if (!currentUser.value) return false
   if (currentUser.value.isAdmin) return true
@@ -119,42 +84,48 @@ const visibleSettingsChildren = computed(() => settingsChildren.filter(item => {
   if (item.perm) return hasPerm(item.perm)
   return true
 }))
-const sidebarMenu = computed(() => visibleNav.value.map(item => {
-  const menuItem = {
-    href: routeHref(item.children ? 'settings-profile' : item.key),
-    title: item.label,
-    icon: { element: item.icon, class: 'app-sidebar-icon' },
-    exact: !item.children,
-    isActive: item.children ? () => String(currentRouteName.value).startsWith('settings-') : undefined
-  }
-  if (item.children) {
-    menuItem.child = visibleSettingsChildren.value.map(child => ({
-      href: routeHref(child.key),
-      title: child.label,
-      exact: true
-    }))
-  }
-  return menuItem
-}))
-
 const currentRouteName = computed(() => String(route.name || 'customer'))
 
+const menuSections = computed(() => {
+  const sections = [
+    { key: 'dashboard', label: '工作台', groupTitle: '数据中心', icon: DataAnalysis, children: [{ key: 'dashboard', label: '工作台', route: 'dashboard' }] },
+    { key: 'records', label: '客户登记表', groupTitle: '数据沉淀', icon: DocumentChecked, children: [
+      { key: 'customer', label: '职称登记表', route: 'customer', visible: hasPerm('viewData') },
+      { key: 'finance', label: '财税登记表', route: 'finance', visible: hasPerm('financeView') || hasPerm('financeRegister') },
+      { key: 'journal', label: '期刊登记表', route: 'journal', visible: hasPerm('financeView') || hasPerm('financeRegister') },
+      { key: 'finance-ledger', label: '个人记账本', route: 'finance-ledger', visible: true }
+    ] },
+    { key: 'operation', label: '运营管理', groupTitle: '系统支持', icon: TrendCharts, children: [
+      { key: 'operation-tasks', label: '任务管理', route: 'operation-tasks', visible: hasPerm('taskManage') },
+      { key: 'operation-qr', label: '无痕码', route: 'operation-qr', visible: hasPerm('qrGen') }
+    ] },
+    { key: 'settings', label: '系统设置', icon: Setting, children: visibleSettingsChildren.value.map(child => ({ key: child.key, label: child.label, route: child.key, visible: true })) }
+  ]
+  return sections.map(section => ({ ...section, children: section.children.filter(item => item.visible !== false) })).filter(section => section.children.length)
+})
+
+const mobileNav = computed(() => menuSections.value.map(section => ({
+  key: section.key,
+  label: section.key === 'records' ? '客户登记表' : section.label,
+  icon: section.icon,
+  route: section.children[0].route,
+  children: section.children
+})))
+
 function firstVisibleRoute() {
-  const first = visibleNav.value[0]
-  if (!first) return 'settings-profile'
-  return first.key === 'settings' ? 'settings-profile' : first.key
+  const firstSection = menuSections.value[0]
+  return firstSection?.children?.[0]?.route || 'dashboard'
 }
 
 function routeAllowed(name) {
   if (String(name).startsWith('settings-')) return visibleSettingsChildren.value.some(item => item.key === name)
-  return visibleNav.value.some(item => item.key === name)
+  return visibleNav.value.some(item => item.key === name) || menuSections.value.some(section => section.children.some(child => child.route === name))
 }
 
 function routeHref(name) {
   const map = {
-    customer: '/customer', operation: '/operation', punch: '/punch',
-    'settings-profile': '/settings/profile', 'settings-accounts': '/settings/accounts',
-    'settings-customer-config': '/settings/customer-config', 'settings-sync': '/settings/sync',
+    dashboard: '/dashboard', customer: '/customer', finance: '/finance/list', journal: '/journal/list', 'finance-ledger': '/finance/ledger', operation: '/operation/tasks', 'operation-tasks': '/operation/tasks', 'operation-qr': '/operation/qr', punch: '/punch',
+    'settings-accounts': '/settings/accounts', 'settings-business-config': '/settings/business-config', 'settings-ai': '/settings/ai', 'settings-sync': '/settings/sync',
     'settings-face-enroll': '/settings/face-enroll', 'settings-audit': '/settings/audit'
   }
   return map[name] || '/customer'
@@ -163,7 +134,9 @@ function routeHref(name) {
 function isNavActive(item) {
   return item.key === 'settings'
     ? String(currentRouteName.value).startsWith('settings-')
-    : currentRouteName.value === item.key
+    : item.key === 'records'
+      ? ['customer', 'finance', 'journal', 'finance-ledger'].includes(currentRouteName.value)
+      : (item.children || []).some(child => child.route === currentRouteName.value) || currentRouteName.value === item.route || currentRouteName.value === item.key
 }
 
 function ensureAllowedRoute() {
@@ -218,21 +191,19 @@ onMounted(async () => {
   window.addEventListener('online', handleOnline)
   window.addEventListener('offline', handleOffline)
   window.addEventListener('keydown', handleKeydown)
-  if (isDark.value && typeof document !== 'undefined') document.documentElement.dataset.theme = 'dark'
-  window.addEventListener('keydown', handleKeydown)
-  if (isDark.value && typeof document !== 'undefined') document.documentElement.dataset.theme = 'dark'
   try {
     currentUser.value = await authApi.me()
     ensureAllowedRoute()
   } catch (err) {
     currentUser.value = null
+  } finally {
+    authReady.value = true
   }
 })
 
 onUnmounted(() => {
   window.removeEventListener('online', handleOnline)
   window.removeEventListener('offline', handleOffline)
-  window.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('keydown', handleKeydown)
 })
 </script>

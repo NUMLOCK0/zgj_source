@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>企微销售群机器人分组与配额分发</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      padding: 12px;
+      padding-bottom: 40px;
+    }
+    .top-hero {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .top-hero-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .top-hero-desc {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 3px;
+    }
+    .btn-primary {
+      background: #0284c7;
+      color: #ffffff;
+      border: none;
+      padding: 7px 14px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: #0369a1; }
+
+    .group-list { display: flex; flex-direction: column; gap: 12px; }
+    .group-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .group-head {
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .gh-left { display: flex; align-items: center; gap: 8px; }
+    .gh-name { font-size: 14.5px; font-weight: 700; color: #1e293b; }
+    .badge {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .badge.zc { background: #dcfce7; color: #15803d; }
+    .badge.finance { background: #fef3c7; color: #b45309; }
+    .badge.all { background: #e0f2fe; color: #0369a1; }
+    .badge.mode { background: #f3e8ff; color: #7e22ce; }
+
+    .gh-actions { display: flex; align-items: center; gap: 6px; }
+    .btn-xs {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      padding: 4px 9px;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-xs:hover { background: #f1f5f9; }
+    .btn-xs.del { color: #ef4444; border-color: #fecaca; }
+    .btn-xs.del:hover { background: #fef2f2; }
+    .btn-xs.add { background: #f0fdf4; color: #16a34a; border-color: #bbf7d0; font-weight: 600; }
+    .btn-xs.add:hover { background: #dcfce7; }
+
+    .group-body { padding: 14px 16px; }
+    .group-meta {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .group-meta span b { color: #1e293b; font-weight: 600; }
+
+    .bots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+    }
+    .bot-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 9px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .bot-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .bot-name { font-size: 13px; font-weight: 700; color: #0f172a; }
+    .progress-box {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .progress-info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #64748b;
+    }
+    .progress-info span b { color: #0f172a; }
+    .progress-bar {
+      height: 6px;
+      background: #f1f5f9;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: #0ea5e9;
+      border-radius: 99px;
+      transition: width 0.3s;
+    }
+    .progress-fill.full { background: #10b981; }
+
+    .bot-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 5px;
+      margin-top: 2px;
+    }
+
+    /* 开关样式 */
+    .switch { position: relative; display: inline-block; width: 34px; height: 18px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #cbd5e1; transition: .2s; border-radius: 18px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 14px; width: 14px; left: 2px; bottom: 2px;
+      background-color: white; transition: .2s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: #0ea5e9; }
+    input:checked + .slider:before { transform: translateX(16px); }
+
+    /* Modal 弹窗 */
+    .modal-mask {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(2px);
+      z-index: 999;
+      display: flex; align-items: center; justify-content: center;
+      padding: 12px;
+    }
+    .modal-box {
+      background: #ffffff;
+      border-radius: 14px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      overflow: hidden;
+      animation: popIn 0.2s ease;
+    }
+    @keyframes popIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-head {
+      padding: 14px 18px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-head h3 { font-size: 15px; font-weight: 700; color: #0f172a; }
+    .modal-close { background: none; border: none; font-size: 18px; color: #94a3b8; cursor: pointer; }
+    .modal-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+    .form-item { display: flex; flex-direction: column; gap: 5px; }
+    .form-item label { font-size: 12.5px; font-weight: 600; color: #334155; }
+    .form-item input, .form-item select {
+      height: 34px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 7px; font-size: 13px;
+      outline: none; transition: border-color 0.15s;
+    }
+    .form-item input:focus, .form-item select:focus { border-color: #0ea5e9; }
+    .modal-foot {
+      padding: 12px 18px; background: #f8fafc; border-top: 1px solid #f1f5f9;
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+    .btn-secondary {
+      background: #ffffff; border: 1px solid #cbd5e1; padding: 6px 13px; border-radius: 7px;
+      font-size: 13px; color: #475569; cursor: pointer;
+    }
+    .empty-box {
+      text-align: center; padding: 40px 0; color: #94a3b8; font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-hero">
+    <div>
+      <div class="top-hero-title">企微销售群机器人与配额分流</div>
+      <div class="top-hero-desc">配置销售群 Webhook 机器人、配额自动轮换及分流方案</div>
+    </div>
+    <button class="btn-primary" id="btn-create-group">+ 创建分组</button>
+  </div>
+
+  <div class="group-list" id="group-list-container">
+    <div class="empty-box">正在加载机器人分组配置...</div>
+  </div>
+
+  <div id="modal-container"></div>
+
+  <script>
+    let state = { config: { globalEnabled: true, groups: [] }, stores: [], financeStores: [] };
+
+    async function loadData() {
+      try {
+        const res = await fetch('/api/wecom-bot-groups');
+        if (res.ok) {
+          const data = await res.json();
+          state.config = data.config || { globalEnabled: true, groups: [] };
+          state.stores = data.stores || [];
+          state.financeStores = data.financeStores || [];
+          render();
+        }
+      } catch (e) {
+        document.getElementById('group-list-container').innerHTML = `<div class="empty-box" style="color:#ef4444">加载失败: ${e.message}</div>`;
+      }
+    }
+
+    function render() {
+      const groups = state.config.groups || [];
+      const container = document.getElementById('group-list-container');
+      if (!groups.length) {
+        container.innerHTML = `<div class="empty-box">暂无机器人分组，请点击右上角【+ 创建分组】添加销售群分流方案</div>`;
+        return;
+      }
+
+      const bizMap = { zc: '职称业务', finance: '财税业务', all: '全部业务' };
+      const modeMap = { quota: '按配额分流 (满额切群)', round_robin: '轮询分流', broadcast: '全量广播' };
+
+      container.innerHTML = groups.map(g => {
+        const bots = g.bots || [];
+        return `
+          <div class="group-card">
+            <div class="group-head">
+              <div class="gh-left">
+                <span class="gh-name">${g.name}</span>
+                <span class="badge ${g.businessType}">${bizMap[g.businessType] || '全部'}</span>
+                <span class="badge mode">${modeMap[g.dispatchMode] || '配额分流'}</span>
+              </div>
+              <div class="gh-actions">
+                <label class="switch" title="分组开关">
+                  <input type="checkbox" onchange="toggleGroup('${g.id}', this.checked)" ${g.enabled ? 'checked' : ''}>
+                  <span class="slider"></span>
+                </label>
+                <button class="btn-xs add" onclick="openBotModal('${g.id}')">+ 添加机器人</button>
+                <button class="btn-xs" onclick="resetGroupQuota('${g.id}')">清零计数</button>
+                <button class="btn-xs" onclick="openGroupModal('${g.id}')">编辑</button>
+                <button class="btn-xs del" onclick="deleteGroup('${g.id}')">删除</button>
+              </div>
+            </div>
+            <div class="group-body">
+              <div class="group-meta">
+                <span>分发时段：<b>${g.timeRange && g.timeRange.enabled ? (g.timeRange.start + ' ~ ' + g.timeRange.end) : '全天24小时'}</b></span>
+                <span>包含机器人：<b>${bots.length}</b> 个</span>
+              </div>
+              <div class="bots-grid">
+                ${bots.length === 0 ? `<div style="grid-column:1/-1; color:#94a3b8; font-size:12px; padding:10px 0;">该分组下暂无群机器人，请点击上方【+ 添加机器人】</div>` : ''}
+                ${bots.map(b => {
+                  const quota = b.dailyQuota || 50;
+                  const current = b.currentCount || 0;
+                  const percent = Math.min(100, Math.round((current / quota) * 100));
+                  return `
+                    <div class="bot-card">
+                      <div class="bot-top">
+                        <span class="bot-name">${b.name}</span>
+                        <label class="switch" title="单群开关">
+                          <input type="checkbox" onchange="toggleBot('${g.id}', '${b.id}', this.checked)" ${b.enabled ? 'checked' : ''}>
+                          <span class="slider"></span>
+                        </label>
+                      </div>
+                      <div class="progress-box">
+                        <div class="progress-info">
+                          <span>今日已分发 <b>${current}</b> / ${quota}</span>
+                          <span>${percent}%</span>
+                        </div>
+                        <div class="progress-bar">
+                          <div class="progress-fill ${percent >= 100 ? 'full' : ''}" style="width:${percent}%"></div>
+                        </div>
+                      </div>
+                      <div class="bot-actions">
+                        <button class="btn-xs" onclick="testBot('${g.id}', '${b.id}')">测试连通</button>
+                        <button class="btn-xs" onclick="openBotModal('${g.id}', '${b.id}')">编辑配额</button>
+                        <button class="btn-xs del" onclick="deleteBot('${g.id}', '${b.id}')">移除</button>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function toggleGroup(id, enabled) {
+      await fetch(`/api/wecom-bot-groups/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      });
+      loadData();
+    }
+
+    async function toggleBot(groupId, botId, enabled) {
+      await fetch(`/api/wecom-bot-groups/${groupId}/bots/${botId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled })
+      });
+      loadData();
+    }
+
+    async function resetGroupQuota(id) {
+      if (!confirm('确定将该分组内所有群机器人的今日计数清零吗？')) return;
+      await fetch(`/api/wecom-bot-groups/${id}/reset`, { method: 'POST' });
+      alert('已成功清零今日计数！');
+      loadData();
+    }
+
+    async function deleteGroup(id) {
+      if (!confirm('确定删除该分组吗？组内所有机器人配置将一并删除。')) return;
+      await fetch(`/api/wecom-bot-groups/${id}`, { method: 'DELETE' });
+      loadData();
+    }
+
+    async function deleteBot(groupId, botId) {
+      if (!confirm('确定移除该群机器人吗？')) return;
+      await fetch(`/api/wecom-bot-groups/${groupId}/bots/${botId}`, { method: 'DELETE' });
+      loadData();
+    }
+
+    async function testBot(groupId, botId) {
+      try {
+        const res = await fetch(`/api/wecom-bot-groups/${groupId}/bots/${botId}/test`, { method: 'POST' });
+        const json = await res.json();
+        if (res.ok) alert('测试成功！已向该企微群发送测试卡片。');
+        else alert('测试失败: ' + (json.error || '无法发送'));
+      } catch (e) {
+        alert('请求异常: ' + e.message);
+      }
+    }
+
+    function openGroupModal(id) {
+      const g = (state.config.groups || []).find(x => x.id === id) || { name: '', businessType: 'all', dispatchMode: 'quota', timeRange: { enabled: true, start: '08:00', end: '23:00' } };
+      const isEdit = !!id;
+      const modal = document.createElement('div');
+      modal.className = 'modal-mask';
+      modal.innerHTML = `
+        <div class="modal-box">
+          <div class="modal-head">
+            <h3>${isEdit ? '编辑分组' : '新建机器人分组'}</h3>
+            <button class="modal-close" onclick="this.closest('.modal-mask').remove()">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-item">
+              <label>分组名称</label>
+              <input type="text" id="g-name" value="${g.name}" placeholder="例如：职称早班销售群组">
+            </div>
+            <div class="form-item">
+              <label>业务线</label>
+              <select id="g-biz">
+                <option value="all" ${g.businessType==='all'?'selected':''}>全部业务 (职称+财税)</option>
+                <option value="zc" ${g.businessType==='zc'?'selected':''}>仅职称业务</option>
+                <option value="finance" ${g.businessType==='finance'?'selected':''}>仅财税业务</option>
+              </select>
+            </div>
+            <div class="form-item">
+              <label>分流模式</label>
+              <select id="g-mode">
+                <option value="quota" ${g.dispatchMode==='quota'?'selected':''}>按配额分流 (A群满额自动切B群)</option>
+                <option value="round_robin" ${g.dispatchMode==='round_robin'?'selected':''}>轮询分流 (一人一条)</option>
+                <option value="broadcast" ${g.dispatchMode==='broadcast'?'selected':''}>全量广播 (组内所有群全发)</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button class="btn-secondary" onclick="this.closest('.modal-mask').remove()">取消</button>
+            <button class="btn-primary" id="btn-save-group">保存</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.querySelector('#btn-save-group').onclick = async () => {
+        const name = modal.querySelector('#g-name').value.trim();
+        if (!name) return alert('请填写分组名称');
+        const payload = {
+          name,
+          businessType: modal.querySelector('#g-biz').value,
+          dispatchMode: modal.querySelector('#g-mode').value
+        };
+        const url = isEdit ? `/api/wecom-bot-groups/${id}` : '/api/wecom-bot-groups';
+        const method = isEdit ? 'PUT' : 'POST';
+        await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        modal.remove();
+        loadData();
+      };
+    }
+
+    function openBotModal(groupId, botId) {
+      const g = (state.config.groups || []).find(x => x.id === groupId);
+      if (!g) return;
+      const b = (g.bots || []).find(x => x.id === botId) || { name: '', webhookUrl: '', dailyQuota: 50 };
+      const isEdit = !!botId;
+
+      const modal = document.createElement('div');
+      modal.className = 'modal-mask';
+      modal.innerHTML = `
+        <div class="modal-box">
+          <div class="modal-head">
+            <h3>${isEdit ? '编辑群机器人' : '添加群机器人'}</h3>
+            <button class="modal-close" onclick="this.closest('.modal-mask').remove()">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-item">
+              <label>群机器人名称</label>
+              <input type="text" id="b-name" value="${b.name}" placeholder="例如：销售1群-小助手">
+            </div>
+            <div class="form-item">
+              <label>企业微信 Webhook 完整地址</label>
+              <input type="text" id="b-url" value="${b.webhookUrl}" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...">
+            </div>
+            <div class="form-item">
+              <label>每日分发配额上限（条）</label>
+              <input type="number" id="b-quota" value="${b.dailyQuota || 50}" placeholder="例如：50">
+            </div>
+          </div>
+          <div class="modal-foot">
+            <button class="btn-secondary" onclick="this.closest('.modal-mask').remove()">取消</button>
+            <button class="btn-primary" id="btn-save-bot">保存</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.querySelector('#btn-save-bot').onclick = async () => {
+        const name = modal.querySelector('#b-name').value.trim();
+        const webhookUrl = modal.querySelector('#b-url').value.trim();
+        const dailyQuota = parseInt(modal.querySelector('#b-quota').value) || 50;
+        if (!name || !webhookUrl) return alert('请完整填写名称与 Webhook 链接');
+
+        const payload = { name, webhookUrl, dailyQuota };
+        const url = isEdit ? `/api/wecom-bot-groups/${groupId}/bots/${botId}` : `/api/wecom-bot-groups/${groupId}/bots`;
+        const method = isEdit ? 'PUT' : 'POST';
+        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (res.ok) {
+          modal.remove();
+          loadData();
+        } else {
+          const err = await res.json();
+          alert('保存失败: ' + (err.error || '未知错误'));
+        }
+      };
+    }
+
+    document.getElementById('btn-create-group').onclick = () => openGroupModal();
+    loadData();
+  </script>
+</body>
+</html>

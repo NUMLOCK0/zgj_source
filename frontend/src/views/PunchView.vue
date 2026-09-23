@@ -125,7 +125,7 @@
           <div v-if="props.user?.isAdmin" style="display: flex; justify-content: flex-end; margin-top: 16px;">
             <el-button type="primary" size="small" :icon="Plus" @click="openAddRecord">新增记录</el-button>
           </div>
-          <el-table :data="records" border class="data-table" style="margin-top: 8px">
+          <el-table size="small" :data="records" border class="data-table" style="margin-top: 8px">
             <el-table-column prop="date" label="日期" min-width="100" />
             <el-table-column prop="name" label="姓名" min-width="80" />
             <el-table-column prop="checkIn" label="上班" min-width="80" />
